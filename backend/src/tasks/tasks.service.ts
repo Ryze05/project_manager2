@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -7,8 +8,8 @@ import {
 import {
   Prisma,
   ProjectRole,
+  TaskStatus,
   type TaskPriority,
-  type TaskStatus,
 } from '../generated/prisma/client.js';
 import { MembersService } from '../members/members.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -63,6 +64,27 @@ function toView(task: TaskRow): TaskView {
   };
 }
 
+interface CreateFields {
+  title: string;
+  description: string | null | undefined;
+  priority: TaskPriority | undefined;
+  dueDate: Date | null | undefined;
+  assigneeId: string | null | undefined;
+}
+
+/** The fields shared by creating a task and a subtask (and by updating). */
+function fieldsOf(dto: CreateTaskDto): CreateFields;
+function fieldsOf(dto: UpdateTaskDto): Partial<CreateFields>;
+function fieldsOf(dto: CreateTaskDto | UpdateTaskDto): Partial<CreateFields> {
+  return {
+    title: dto.title,
+    description: dto.description,
+    priority: dto.priority,
+    dueDate: toDate(dto.dueDate),
+    assigneeId: dto.assigneeId,
+  };
+}
+
 /** undefined = leave as is, null = clear, string = set. */
 function toDate(value: string | null | undefined): Date | null | undefined {
   return value === undefined || value === null ? value : new Date(value);
@@ -84,18 +106,66 @@ export class TasksService {
     await this.assertAssignable(projectId, dto.assigneeId);
 
     const task = await this.prisma.task.create({
-      data: {
-        title: dto.title,
-        description: dto.description,
-        priority: dto.priority,
-        dueDate: toDate(dto.dueDate),
-        assigneeId: dto.assigneeId,
-        projectId,
-        creatorId: userId,
-      },
+      data: { ...fieldsOf(dto), projectId, creatorId: userId },
       include: taskInclude,
     });
     return toView(task);
+  }
+
+  /**
+   * Creates a subtask under a top-level task. Rules (spec):
+   * - a subtask cannot have subtasks of its own (one level only);
+   * - if the parent is DONE, it goes back to IN_PROGRESS, atomically.
+   * The subtask copies the project from its parent, and has its own assignee.
+   */
+  async createSubtask(
+    projectId: string,
+    parentId: string,
+    userId: string,
+    dto: CreateTaskDto,
+  ): Promise<TaskView> {
+    await this.members.requireMember(projectId, userId);
+    const parent = await this.getTask(projectId, parentId);
+    if (parent.parentId !== null) {
+      throw new BadRequestException('Una subtarea no puede tener subtareas');
+    }
+    await this.assertAssignable(projectId, dto.assigneeId);
+
+    const subtask = await this.prisma.$transaction(async (tx) => {
+      if (parent.status === TaskStatus.DONE) {
+        await tx.task.update({
+          where: { id: parent.id },
+          data: { status: TaskStatus.IN_PROGRESS },
+        });
+      }
+      return tx.task.create({
+        data: {
+          ...fieldsOf(dto),
+          projectId: parent.projectId,
+          parentId: parent.id,
+          creatorId: userId,
+        },
+        include: taskInclude,
+      });
+    });
+    return toView(subtask);
+  }
+
+  /** Subtasks of a task, oldest first. */
+  async listSubtasks(
+    projectId: string,
+    parentId: string,
+    userId: string,
+  ): Promise<TaskView[]> {
+    await this.members.requireMember(projectId, userId);
+    await this.getTask(projectId, parentId);
+
+    const subtasks = await this.prisma.task.findMany({
+      where: { projectId, parentId },
+      include: taskInclude,
+      orderBy: { createdAt: 'asc' },
+    });
+    return subtasks.map(toView);
   }
 
   /**
@@ -140,20 +210,34 @@ export class TasksService {
     dto: UpdateTaskDto,
   ): Promise<TaskView> {
     await this.members.requireMember(projectId, userId);
-    await this.getTask(projectId, taskId);
+    const existing = await this.getTask(projectId, taskId);
     await this.assertAssignable(projectId, dto.assigneeId);
 
-    const task = await this.prisma.task.update({
-      where: { id: taskId },
-      data: {
-        title: dto.title,
-        description: dto.description,
-        priority: dto.priority,
-        status: dto.status,
-        dueDate: toDate(dto.dueDate),
-        assigneeId: dto.assigneeId,
-      },
-      include: taskInclude,
+    // A task cannot be completed while any of its subtasks is pending.
+    if (
+      dto.status === TaskStatus.DONE &&
+      existing.subtasks.some((s) => s.status !== TaskStatus.DONE)
+    ) {
+      throw new ConflictException(
+        'No se puede completar la tarea mientras tenga subtareas pendientes',
+      );
+    }
+
+    const parentToReopen = await this.parentToReopen(existing, dto.status);
+
+    // The parent is never completed automatically, only reopened.
+    const task = await this.prisma.$transaction(async (tx) => {
+      if (parentToReopen) {
+        await tx.task.update({
+          where: { id: parentToReopen },
+          data: { status: TaskStatus.IN_PROGRESS },
+        });
+      }
+      return tx.task.update({
+        where: { id: taskId },
+        data: { ...fieldsOf(dto), status: dto.status },
+        include: taskInclude,
+      });
     });
     return toView(task);
   }
@@ -188,6 +272,28 @@ export class TasksService {
       throw new NotFoundException('Tarea no encontrada');
     }
     return task;
+  }
+
+  /**
+   * Reopening a subtask (DONE -> anything else) while its parent is DONE sends
+   * the parent back to IN_PROGRESS. Returns the parent's id in that case.
+   */
+  private async parentToReopen(
+    task: TaskRow,
+    newStatus: TaskStatus | undefined,
+  ): Promise<string | null> {
+    const reopening =
+      task.parentId !== null &&
+      task.status === TaskStatus.DONE &&
+      newStatus !== undefined &&
+      newStatus !== TaskStatus.DONE;
+    if (!reopening) return null;
+
+    const parent = await this.prisma.task.findUnique({
+      where: { id: task.parentId as string },
+      select: { id: true, status: true },
+    });
+    return parent?.status === TaskStatus.DONE ? parent.id : null;
   }
 
   /** null/undefined mean "no assignee"; anything else must be a project member. */

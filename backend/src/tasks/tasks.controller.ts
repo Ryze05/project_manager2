@@ -46,6 +46,32 @@ export class TasksController {
     return this.tasks.create(projectId, user.id, dto);
   }
 
+  @Post('tasks/:taskId/subtasks')
+  @ApiOperation({
+    summary:
+      'Crear una subtarea (una subtarea no puede tener subtareas; si la tarea estaba hecha, vuelve a "en curso")',
+  })
+  createSubtask(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('taskId', ParseUUIDPipe) taskId: string,
+    @Body() dto: CreateTaskDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<TaskView> {
+    return this.tasks.createSubtask(projectId, taskId, user.id, dto);
+  }
+
+  @Get('tasks/:taskId/subtasks')
+  @ApiOperation({
+    summary: 'Listar las subtareas de una tarea (más antigua primero)',
+  })
+  listSubtasks(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('taskId', ParseUUIDPipe) taskId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<TaskView[]> {
+    return this.tasks.listSubtasks(projectId, taskId, user.id);
+  }
+
   @Get('tasks/:taskId')
   @ApiOperation({ summary: 'Detalle de una tarea o subtarea' })
   findOne(
