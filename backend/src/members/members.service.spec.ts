@@ -75,6 +75,22 @@ describe('MembersService', () => {
     });
   });
 
+  describe('isMember', () => {
+    it('is true for a member and queries the composite key', async () => {
+      findUnique.mockResolvedValue({ userId: 'member' });
+      await expect(service.isMember('p1', 'member')).resolves.toBe(true);
+      expect(findUnique).toHaveBeenCalledWith({
+        where: { userId_projectId: { userId: 'member', projectId: 'p1' } },
+        select: { userId: true },
+      });
+    });
+
+    it('is false (and does not throw) for a non-member', async () => {
+      findUnique.mockResolvedValue(null);
+      await expect(service.isMember('p1', 'x')).resolves.toBe(false);
+    });
+  });
+
   describe('list', () => {
     it('flattens each membership into id, name, email and role', async () => {
       findUnique.mockResolvedValue(member);

@@ -1,0 +1,205 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  ProjectRole,
+  type TaskPriority,
+  type TaskStatus,
+} from '../generated/prisma/client.js';
+import { MembersService } from '../members/members.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import type { CreateTaskDto } from './dto/create-task.dto.js';
+import type { UpdateTaskDto } from './dto/update-task.dto.js';
+
+export interface TaskView {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: Date | null;
+  projectId: string;
+  /** null for a regular task, the parent's id for a subtask. */
+  parentId: string | null;
+  creatorId: string;
+  assignee: { id: string; name: string; email: string } | null;
+  /** Computed from the subtasks' states, never stored. */
+  subtaskProgress: { done: number; total: number };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type Board = Record<TaskStatus, TaskView[]>;
+
+const taskInclude = {
+  assignee: { select: { id: true, name: true, email: true } },
+  subtasks: { select: { status: true } },
+} satisfies Prisma.TaskInclude;
+
+type TaskRow = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
+
+function toView(task: TaskRow): TaskView {
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    dueDate: task.dueDate,
+    projectId: task.projectId,
+    parentId: task.parentId,
+    creatorId: task.creatorId,
+    assignee: task.assignee,
+    subtaskProgress: {
+      done: task.subtasks.filter((s) => s.status === 'DONE').length,
+      total: task.subtasks.length,
+    },
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+  };
+}
+
+/** undefined = leave as is, null = clear, string = set. */
+function toDate(value: string | null | undefined): Date | null | undefined {
+  return value === undefined || value === null ? value : new Date(value);
+}
+
+@Injectable()
+export class TasksService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly members: MembersService,
+  ) {}
+
+  async create(
+    projectId: string,
+    userId: string,
+    dto: CreateTaskDto,
+  ): Promise<TaskView> {
+    await this.members.requireMember(projectId, userId);
+    await this.assertAssignable(projectId, dto.assigneeId);
+
+    const task = await this.prisma.task.create({
+      data: {
+        title: dto.title,
+        description: dto.description,
+        priority: dto.priority,
+        dueDate: toDate(dto.dueDate),
+        assigneeId: dto.assigneeId,
+        projectId,
+        creatorId: userId,
+      },
+      include: taskInclude,
+    });
+    return toView(task);
+  }
+
+  /**
+   * The three columns. Subtasks never appear as cards (parentId null only).
+   * Each column: highest priority first, then earliest due date (none last),
+   * then oldest first.
+   */
+  async board(projectId: string, userId: string): Promise<Board> {
+    await this.members.requireMember(projectId, userId);
+
+    const tasks = await this.prisma.task.findMany({
+      where: { projectId, parentId: null },
+      include: taskInclude,
+      orderBy: [
+        { priority: 'desc' },
+        { dueDate: { sort: 'asc', nulls: 'last' } },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    const board: Board = { TODO: [], IN_PROGRESS: [], DONE: [] };
+    for (const task of tasks) {
+      board[task.status].push(toView(task));
+    }
+    return board;
+  }
+
+  /** Works for tasks and subtasks alike: both are rows of Task. */
+  async findOne(
+    projectId: string,
+    taskId: string,
+    userId: string,
+  ): Promise<TaskView> {
+    await this.members.requireMember(projectId, userId);
+    return toView(await this.getTask(projectId, taskId));
+  }
+
+  async update(
+    projectId: string,
+    taskId: string,
+    userId: string,
+    dto: UpdateTaskDto,
+  ): Promise<TaskView> {
+    await this.members.requireMember(projectId, userId);
+    await this.getTask(projectId, taskId);
+    await this.assertAssignable(projectId, dto.assigneeId);
+
+    const task = await this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        title: dto.title,
+        description: dto.description,
+        priority: dto.priority,
+        status: dto.status,
+        dueDate: toDate(dto.dueDate),
+        assigneeId: dto.assigneeId,
+      },
+      include: taskInclude,
+    });
+    return toView(task);
+  }
+
+  /**
+   * The owner deletes any task; a member only the ones they created.
+   * Subtasks and comments go away through DB cascades.
+   */
+  async remove(
+    projectId: string,
+    taskId: string,
+    userId: string,
+  ): Promise<void> {
+    const membership = await this.members.requireMember(projectId, userId);
+    const task = await this.getTask(projectId, taskId);
+
+    if (membership.role !== ProjectRole.OWNER && task.creatorId !== userId) {
+      throw new ForbiddenException(
+        'Solo puedes borrar las tareas que has creado',
+      );
+    }
+    await this.prisma.task.delete({ where: { id: taskId } });
+  }
+
+  /** Scoped by project, so a task id from another project is just a 404. */
+  private async getTask(projectId: string, taskId: string): Promise<TaskRow> {
+    const task = await this.prisma.task.findFirst({
+      where: { id: taskId, projectId },
+      include: taskInclude,
+    });
+    if (!task) {
+      throw new NotFoundException('Tarea no encontrada');
+    }
+    return task;
+  }
+
+  /** null/undefined mean "no assignee"; anything else must be a project member. */
+  private async assertAssignable(
+    projectId: string,
+    assigneeId: string | null | undefined,
+  ): Promise<void> {
+    if (!assigneeId) return;
+    if (!(await this.members.isMember(projectId, assigneeId))) {
+      throw new BadRequestException(
+        'El responsable debe ser miembro del proyecto',
+      );
+    }
+  }
+}

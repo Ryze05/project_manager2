@@ -56,6 +56,18 @@ export class MembersService {
     return membership;
   }
 
+  /**
+   * Non-throwing check, for validating a user id sent in a request body
+   * (e.g. a task assignee). Callers decide which error to raise.
+   */
+  async isMember(projectId: string, userId: string): Promise<boolean> {
+    const membership = await this.prisma.projectMember.findUnique({
+      where: { userId_projectId: { userId, projectId } },
+      select: { userId: true },
+    });
+    return membership !== null;
+  }
+
   async list(projectId: string, userId: string): Promise<MemberView[]> {
     await this.requireMember(projectId, userId);
     const members = await this.prisma.projectMember.findMany({

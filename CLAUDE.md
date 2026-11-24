@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Git repo (branch `main`, root `.gitignore` excludes `.env`, `node_modules`, `dist`, generated Prisma client). Layout:
 - `docs/especificaciones_gestor_proyectos_colaborativo.md` — the product spec (in Spanish); read it before implementing anything, it is the source of truth.
 - `bd_docker/` — Docker Compose for Postgres + pgAdmin.
-- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD) and `HealthModule`. Not done yet: tasks, comments, "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route and no e2e test yet.
+- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD), `TasksModule` (tasks and board; subtask rules not yet) and `HealthModule`. Not done yet: subtasks, comments, "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route and no e2e test yet.
 - No front-end yet (planned: Next.js on port 3001; `FRONTEND_URL` defaults to `http://localhost:3001`).
 
 ## Product summary (from the spec)
@@ -74,6 +74,7 @@ Setup facts that are easy to miss:
 - `AuthService` hashes passwords with bcrypt (10 rounds) before calling `UsersService.create`, which stores whatever it receives. Wrong email and wrong password return the same 401 message. Responses never include `password`.
 - Signing secret and expiry come from `JWT_SECRET` / `JWT_EXPIRES_IN` via `JwtModule.registerAsync` (the strategy reads the same secret to verify).
 - Password rule lives in a single `@Matches` in `RegisterDto` (two `@Matches` on one property lose a message, since class-validator keys errors by rule type).
+- `GET /auth/me` is not in the spec. It is kept on purpose until the front-end exists (it may use it to validate a stored token on reload); revisit then.
 - Names (`RegisterDto.name`, `CreateProjectDto.name`) are trimmed with a `@Transform` in the DTO, before `@IsNotEmpty()` runs, so a whitespace-only name is rejected. Services assume the DTO already trimmed. Because of the global `enableImplicitConversion`, a number sent for a string field (e.g. `"name": 123`) is accepted and stored as `"123"`; this was reviewed and left as is.
 
 ### Health
@@ -89,7 +90,14 @@ Setup facts that are easy to miss:
 - `MembersService.remove` unassigns that user's tasks and subtasks in the project and deletes the membership in one `$transaction` (`Task.assigneeId` points at `User`, so the DB does not do it). The owner cannot be removed (403), which also covers "owner cannot leave"; there is no separate leave endpoint.
 - Emails are matched lowercased/trimmed in `UsersService`, but `AddMemberDto` uses `@IsEmail`, which rejects surrounding whitespace (400).
 - Unit tests mock Prisma; the Prisma queries (ordering by role, `_count`, composite key `userId_projectId`, the transaction, cascades) were verified once with real requests against Postgres, not by an automated e2e test.
-- `GET /auth/me` is not in the spec; it is kept temporarily to check the guard with real requests.
+### Tasks and board
+
+- Routes live under the project: `GET /projects/:projectId/board`, `POST /projects/:projectId/tasks`, and `GET|PATCH|DELETE /projects/:projectId/tasks/:taskId`. `TasksModule` imports `MembersModule`; every method starts with `requireMember`, and lookups are scoped by `projectId` (a task id from another project is a 404).
+- **`GET/PATCH/DELETE .../tasks/:taskId` serve tasks and subtasks alike** (both are `Task` rows); the response carries `parentId` (null for a regular task). Subtask creation/listing will be separate (`.../tasks/:taskId/subtasks`). Neither DTO has `parentId` and the global pipe forbids unknown fields, so a subtask cannot be moved nor a task converted (level 1). Moving a card between columns is a `PATCH` of `status`.
+- Board = three columns (`TODO`, `IN_PROGRESS`, `DONE`, always present), only `parentId: null` tasks, ordered by priority (HIGH first; relies on the Postgres enum order LOW < MEDIUM < HIGH), then due date (none last), then creation. Each card has `subtaskProgress {done, total}` computed from the subtasks.
+- **`null` vs `undefined` in updates:** `description`, `dueDate` and `assigneeId` accept `null` to clear them; omitted means untouched. `title`, `priority` and `status` reject `null` (400). `@IsOptional()` lets `null` through, so non-nullable fields use `@ValidateIf(value !== undefined)` instead, and `UpdateTaskDto` redeclares them (`PartialType` would add `@IsOptional()` back).
+- An assignee must be a project member (`MembersService.isMember`, non-throwing) or the request gets a 400. Delete: owner deletes any task, a member only the ones they created (403 otherwise).
+- **Not implemented yet (next step, subtasks):** "cannot mark done with pending subtasks", "creating/reopening a subtask reopens a done parent", subtask creation and "a subtask cannot have subtasks". Today `PATCH status: DONE` is accepted even with pending subtasks.
 
 ### Prisma schema decisions
 
