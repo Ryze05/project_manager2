@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vista previa · Sistema</title>
+<style>
+  /* =====================================================================
+     TOKENS. Todo lo demás solo usa estas variables: nada de colores,
+     espacios ni radios "a mano" en los componentes.
+     ===================================================================== */
+  :root {
+    /* Color: solo tres familias. Neutros cálidos, un acento morado, un aviso terroso. */
+    --bg: #FCFAF6;            /* fondo de página */
+    --surface: #FFFFFF;       /* tarjetas, paneles, campos */
+    --sunken: #F4F0E8;        /* barra lateral, columnas, zonas secundarias, hover */
+    --line: #EEE9DF;          /* líneas finas y bordes */
+    --line-strong: #E0D9CB;   /* bordes de campos y botones secundarios */
+    --text: #1E1A2B;
+    --muted: #6B6577;
+    --faint: #A39DAE;         /* deshabilitado, vacío */
+    --accent: #2E1F4F;        /* acción principal, selección */
+    --accent-hover: #432E73;
+    --accent-soft: #ECE8F4;   /* fondos suaves del acento: iniciales, rol */
+    --on-accent: #FFFFFF;
+    --danger: #A8453A;        /* SOLO vencido, prioridad alta y errores */
+    --danger-soft: #F6E4E1;
+
+    /* Espacio: escala de 4 px. */
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+    --page-pad: var(--s6);    /* margen de la página */
+    --card-pad: var(--s5);    /* relleno interior de una tarjeta */
+    --gap: var(--s4);         /* hueco entre tarjetas */
+    --section-gap: var(--s6); /* hueco entre bloques grandes */
+
+    /* Forma */
+    --r-sm: 8px; --r-md: 12px; --r-lg: 20px; --r-full: 999px;
+    --shadow: 0 1px 2px rgb(30 26 43 / 4%), 0 12px 28px -18px rgb(30 26 43 / 14%);
+
+    /* Tipografía: 7 tamaños, 3 pesos. */
+    --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-base: 15px; --fs-lg: 17px; --fs-xl: 22px; --fs-2xl: 28px;
+    --fw-normal: 400; --fw-medium: 500; --fw-bold: 600;
+
+    --sidebar-w: 240px;
+    --page-max: 960px;
+  }
+  @media (max-width: 900px) { :root { --page-pad: var(--s4); --card-pad: var(--s4); } }
+
+  /* ---------- Base ---------- */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--fs-base); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, h4, p, ul, dl, dd { margin: 0; padding: 0; }
+  ul { list-style: none; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  h1 { font-size: var(--fs-2xl); font-weight: var(--fw-bold); letter-spacing: -.025em; line-height: 1.2; }
+  h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); letter-spacing: -.02em; line-height: 1.25; }
+  h3 { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+  .muted { color: var(--muted); font-size: var(--fs-md); }
+  .small { font-size: var(--fs-sm); color: var(--muted); }
+  .danger { color: var(--danger); }
+
+  /* ---------- Barra de la vista previa (no forma parte del diseño) ---------- */
+  .pv { position: sticky; top: 0; z-index: 60; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; padding: 10px 16px; background: #1E1A2B; color: #fff; font-size: 13px; }
+  .pv .g { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pv .l { opacity: .6; margin-right: 4px; }
+  .pv button { border: 1px solid #ffffff40; background: transparent; color: #fff; padding: 4px 12px; border-radius: 999px; }
+  .pv button[aria-pressed="true"] { background: #fff; color: #1E1A2B; border-color: #fff; }
+
+  /* ---------- Estructura ---------- */
+  .app { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: calc(100vh - 49px); }
+  body[data-screen="login"] .app { grid-template-columns: minmax(0, 1fr); }
+  body[data-screen="login"] .sidebar { display: none; }
+  .sidebar { background: var(--sunken); padding: var(--s5) var(--s4); display: flex; flex-direction: column; gap: var(--s5); position: sticky; top: 49px; height: calc(100vh - 49px); }
+  main { padding: var(--page-pad); min-width: 0; }
+  .page { max-width: var(--page-max); margin: 0 auto; }
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--s4); flex-wrap: wrap; margin-bottom: var(--section-gap); }
+  .page-head .eyebrow { font-size: var(--fs-sm); color: var(--muted); margin-bottom: var(--s1); }
+  .page-head .lead { color: var(--muted); margin-top: var(--s2); }
+  .actions { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+  .stack-y { display: flex; flex-direction: column; gap: var(--gap); }
+  .cols-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); }
+  [data-s] { display: none; }
+  body[data-screen="system"] [data-s="system"], body[data-screen="login"] [data-s="login"], body[data-screen="home"] [data-s="home"],
+  body[data-screen="projects"] [data-s="projects"], body[data-screen="board"] [data-s="board"], body[data-screen="detail"] [data-s="board"],
+  body[data-screen="detail"] [data-s="detail"], body[data-screen="mine"] [data-s="mine"], body[data-screen="members"] [data-s="members"] { display: block; }
+
+  /* ---------- Barra lateral ---------- */
+  .logo { display: flex; align-items: center; gap: var(--s3); font-weight: var(--fw-bold); letter-spacing: -.01em; }
+  .logo-mark { width: 32px; height: 32px; border-radius: var(--r-md); background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: var(--fs-md); }
+  .nav { display: flex; flex-direction: column; gap: var(--s1); }
+  .nav button { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); border: 0; background: transparent; text-align: left; padding: var(--s2) var(--s3); border-radius: var(--r-sm); color: var(--muted); font-weight: var(--fw-medium); font-size: var(--fs-md); }
+  .nav button:hover { color: var(--text); }
+  .nav button[aria-current="page"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(30 26 43 / 8%); }
+  .nav-title { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 var(--s3); margin-bottom: var(--s1); }
+  .nav .dot { width: 8px; height: 8px; border-radius: 3px; background: var(--faint); flex: none; }
+  .nav .with-dot { justify-content: flex-start; color: var(--text); font-weight: var(--fw-normal); }
+  .nav .with-dot:hover { background: rgb(30 26 43 / 5%); }
+  .pill { background: var(--accent); color: var(--on-accent); border-radius: var(--r-full); font-size: var(--fs-xs); padding: 0 var(--s2); font-weight: var(--fw-bold); }
+  .me { margin-top: auto; display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); }
+
+  /* ---------- Componentes ---------- */
+  .btn { border: 1px solid transparent; border-radius: var(--r-full); padding: var(--s2) var(--s4); font-size: var(--fs-md); font-weight: var(--fw-bold); background: var(--accent); color: var(--on-accent); white-space: nowrap; }
+  .btn:hover { background: var(--accent-hover); }
+  .btn--ghost { background: var(--surface); color: var(--text); border-color: var(--line-strong); font-weight: var(--fw-medium); }
+  .btn--ghost:hover { background: var(--sunken); }
+  .btn--block { width: 100%; padding: var(--s3) var(--s4); }
+  .btn--text { background: transparent; color: var(--danger); font-weight: var(--fw-medium); padding: var(--s1) var(--s2); }
+  .btn--text:hover { background: var(--danger-soft); }
+  .link { border: 0; background: transparent; padding: 0; color: var(--accent); font-weight: var(--fw-bold); font-size: var(--fs-sm); }
+  .link:hover { text-decoration: underline; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--card-pad); box-shadow: var(--shadow); }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s3); margin-bottom: var(--s3); }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px var(--s2); border-radius: var(--r-full); font-size: var(--fs-xs); font-weight: var(--fw-medium); background: var(--sunken); color: var(--muted); white-space: nowrap; }
+  .badge--accent { background: var(--accent-soft); color: var(--accent); }
+  .badge--danger { background: var(--danger-soft); color: var(--danger); }
+  .badge--outline { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .badge--dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: var(--fs-xs); font-weight: var(--fw-bold); flex: none; }
+  .avatar--me { background: var(--accent); color: var(--on-accent); }
+  .chip { width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: var(--fs-md); font-weight: var(--fw-bold); flex: none; }
+  .chip--lg { width: 44px; height: 44px; border-radius: var(--r-md); font-size: var(--fs-lg); }
+  .check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-strong); flex: none; display: grid; place-items: center; font-size: 10px; color: var(--on-accent); }
+  .check--sq { border-radius: 6px; }
+  .check.on { background: var(--accent); border-color: var(--accent); }
+  li:hover > .check:not(.on) { border-color: var(--accent); }
+  .progress { display: flex; align-items: center; gap: var(--s3); font-size: var(--fs-sm); color: var(--muted); }
+  .bar { flex: 1; height: 6px; border-radius: var(--r-full); background: var(--sunken); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: var(--r-full); }
+  .input { width: 100%; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: var(--s3); background: var(--surface); }
+  .input::placeholder { color: var(--faint); }
+  .input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .search { width: 240px; border-radius: var(--r-full); padding: var(--s2) var(--s4); }
+  .select { font-size: var(--fs-xs); color: var(--muted); border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-full); padding: 2px var(--s3); }
+  .avatars { display: flex; }
+  .avatars .avatar { margin-left: -8px; box-shadow: 0 0 0 2px var(--surface); }
+  .avatars .avatar:first-child { margin-left: 0; }
+  .switch { display: inline-flex; align-items: center; gap: var(--s3); font-size: var(--fs-md); color: var(--muted); }
+  .switch i { width: 36px; height: 20px; border-radius: var(--r-full); background: var(--line-strong); position: relative; }
+  .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); }
+
+  /* Lista: la unidad básica de las pantallas */
+  .list > li { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0; }
+  .list > li + li { border-top: 1px solid var(--line); }
+  .list .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .list .title { font-weight: var(--fw-medium); }
+  .list .title, .list .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .meta { font-size: var(--fs-sm); color: var(--muted); }
+  .list .when { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; min-width: 72px; text-align: right; }
+  .list .when.danger { color: var(--danger); font-weight: var(--fw-bold); }
+  .group { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: var(--s4) 0 var(--s1); }
+  .group:first-of-type { padding-top: var(--s1); }
+  .group.danger { color: var(--danger); }
+  .count { background: var(--sunken); border-radius: var(--r-full); padding: 0 var(--s2); font-size: var(--fs-xs); letter-spacing: 0; }
+  .group.danger .count { background: var(--danger-soft); }
+
+  /* ---------- Proyectos ---------- */
+  .projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr)); gap: var(--gap); }
+  .pcard { display: flex; gap: var(--s4); align-items: flex-start; text-align: left; transition: transform .15s; }
+  .pcard:hover { transform: translateY(-2px); }
+  .pcard .pbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--s2); }
+  .pcard .ptop { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); }
+  .pcard h3 { font-size: var(--fs-lg); letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pcard .desc { color: var(--muted); font-size: var(--fs-md); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.9em; }
+  .pcard .desc.empty { color: var(--faint); font-style: italic; }
+  .pcard .foot { display: flex; justify-content: space-between; gap: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
+
+  /* ---------- Tablero ---------- */
+  .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); align-items: start; }
+  .column { background: var(--sunken); border-radius: var(--r-lg); padding: var(--s3); display: flex; flex-direction: column; gap: var(--s3); }
+  .column-head { display: flex; justify-content: space-between; align-items: center; padding: var(--s1) var(--s2); font-weight: var(--fw-bold); font-size: var(--fs-md); }
+  .column-head .count { background: var(--surface); color: var(--muted); }
+  .tcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s4); display: flex; flex-direction: column; gap: var(--s3); text-align: left; width: 100%; }
+  .tcard:hover { border-color: var(--line-strong); }
+  .tcard .row { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
+  .tcard.done .ttl { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+  .ttl { font-weight: var(--fw-medium); line-height: 1.35; }
+
+  /* ---------- Detalle (panel lateral) ---------- */
+  .scrim { position: fixed; inset: 49px 0 0 0; background: rgb(30 26 43 / 25%); z-index: 30; }
+  .drawer { position: fixed; top: 49px; right: 0; bottom: 0; width: min(520px, 100%); background: var(--surface); border-left: 1px solid var(--line); z-index: 40; overflow-y: auto; padding: var(--s5); display: flex; flex-direction: column; gap: var(--s5); box-shadow: -12px 0 40px rgb(30 26 43 / 10%); }
+  .drawer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); }
+  .x { border: 1px solid var(--line-strong); background: transparent; border-radius: 50%; width: 32px; height: 32px; color: var(--muted); flex: none; }
+  .fields { display: grid; grid-template-columns: 112px 1fr; gap: var(--s3); align-items: center; font-size: var(--fs-md); }
+  .fields dt { color: var(--muted); }
+  .fields dd { display: flex; align-items: center; gap: var(--s2); }
+  .section-label { display: flex; justify-content: space-between; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: var(--fw-bold); margin-bottom: var(--s2); }
+  .comment { display: flex; gap: var(--s3); margin-bottom: var(--s4); }
+  .bubble { background: var(--sunken); border-radius: 4px var(--r-md) var(--r-md) var(--r-md); padding: var(--s3) var(--s4); flex: 1; font-size: var(--fs-md); }
+  .bubble b { display: block; font-size: var(--fs-sm); }
+  .bubble b span { font-weight: var(--fw-normal); color: var(--muted); margin-left: var(--s2); }
+
+  /* ---------- Acceso ---------- */
+  .auth { min-height: calc(100vh - 49px - 2 * var(--page-pad)); display: grid; place-items: center; }
+  .auth .card { width: min(400px, 100%); display: flex; flex-direction: column; gap: var(--s4); }
+  .field { display: flex; flex-direction: column; gap: var(--s1); font-size: var(--fs-md); font-weight: var(--fw-medium); }
+  .field .hint { font-size: var(--fs-xs); font-weight: var(--fw-normal); color: var(--muted); }
+
+  .seg { display: inline-flex; background: var(--sunken); border-radius: var(--r-full); padding: 2px; }
+  .seg button { border: 0; background: transparent; padding: var(--s1) var(--s3); border-radius: var(--r-full); font-size: var(--fs-md); font-weight: var(--fw-medium); color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(30 26 43 / 10%); }
+  button.switch { border: 0; background: transparent; padding: 0; }
+  .switch[aria-pressed="true"] i { background: var(--accent); }
+  .switch[aria-pressed="true"] i::after { left: 18px; }
+  .list > li.is-done .title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+  .proj-head { display: flex; align-items: center; gap: var(--s3); padding: var(--s4) 0 var(--s2); }
+  .proj-head:first-child { padding-top: 0; }
+  .proj-head h3 { flex: 1; font-size: var(--fs-base); }
+  .empty-state { text-align: center; color: var(--muted); padding: var(--s6) 0; }
+
+  /* ---------- Pantalla "Sistema" (documentación) ---------- */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); }
+  .sw { display: flex; flex-direction: column; gap: var(--s2); font-size: var(--fs-sm); }
+  .sw i { height: 52px; border-radius: var(--r-md); border: 1px solid var(--line); display: block; }
+  .sw b { font-weight: var(--fw-bold); } .sw span { color: var(--muted); }
+  .ruler { display: flex; align-items: flex-end; gap: var(--s4); flex-wrap: wrap; }
+  .ruler div { display: flex; flex-direction: column; align-items: center; gap: var(--s2); font-size: var(--fs-xs); color: var(--muted); }
+  .ruler i { display: block; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 2px; }
+  .rules li { padding: var(--s2) 0; font-size: var(--fs-md); }
+  .rules li + li { border-top: 1px solid var(--line); }
+  .demo { display: flex; gap: var(--s3); align-items: center; flex-wrap: wrap; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); align-content: start; }
+    .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: var(--s3) var(--s4); gap: var(--s2) var(--s4); }
+    .nav { flex-direction: row; }
+    .nav-recent, .me { display: none; }
+    .cols-2, .board { grid-template-columns: minmax(0, 1fr); }
+    .search { width: 100%; }
+    h1 { font-size: 24px; }
+    .pcard { gap: var(--s3); }
+  }
+</style>
+</head>
+<body data-screen="system">
+
+<div class="pv">
+  <div class="g"><span class="l">Pantalla</span>
+    <button data-set="screen" data-value="system" aria-pressed="true">Sistema</button>
+    <button data-set="screen" data-value="login">Acceso</button>
+    <button data-set="screen" data-value="home">Inicio</button>
+    <button data-set="screen" data-value="projects">Proyectos</button>
+    <button data-set="screen" data-value="board">Tablero</button>
+    <button data-set="screen" data-value="detail">Detalle</button>
+    <button data-set="screen" data-value="mine">Mis tareas</button>
+    <button data-set="screen" data-value="members">Miembros</button>
+  </div>
+  <div class="g"><span class="l">Nº de proyectos</span>
+    <button data-set="count" data-value="1">1</button>
+    <button data-set="count" data-value="4" aria-pressed="true">4</button>
+    <button data-set="count" data-value="9">9</button>
+    <button data-set="count" data-value="20">20</button>
+  </div>
+  <div class="g"><span class="l">* = necesita ampliar la API</span></div>
+</div>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><span class="logo-mark">N</span> Nombre</div>
+    <nav class="nav">
+      <button data-nav="home">Inicio</button>
+      <button data-nav="projects board detail members">Proyectos</button>
+      <button data-nav="mine">Mis tareas <span class="pill">4</span></button>
+    </nav>
+    <div class="nav-recent">
+      <div class="nav-title">Recientes</div>
+      <div class="nav">
+        <button class="with-dot"><span class="dot"></span>Entrenamientos</button>
+        <button class="with-dot"><span class="dot"></span>Web del club</button>
+        <button class="with-dot"><span class="dot"></span>TFG</button>
+      </div>
+    </div>
+    <div class="me"><span class="avatar avatar--me">M</span><div><div style="font-weight:var(--fw-medium);font-size:var(--fs-md)">Marta</div><div class="small">Cerrar sesión</div></div></div>
+  </aside>
+
+  <main>
+
+    <!-- ================= SISTEMA ================= -->
+    <section data-s="system"><div class="page">
+      <header class="page-head"><div><p class="eyebrow">Reglas que cumplen todas las pantallas</p><h1>Sistema de diseño</h1></div></header>
+      <div class="stack-y">
+
+        <article class="card">
+          <div class="card-head"><h3>Color · solo tres familias</h3><span class="small">Cada color tiene un único papel</span></div>
+          <div class="swatches">
+            <div class="sw"><i style="background:var(--bg)"></i><b>Fondo</b><span>#FCFAF6 · página</span></div>
+            <div class="sw"><i style="background:var(--surface)"></i><b>Superficie</b><span>#FFFFFF · tarjetas</span></div>
+            <div class="sw"><i style="background:var(--sunken)"></i><b>Hundido</b><span>#F4F0E8 · menú, columnas</span></div>
+            <div class="sw"><i style="background:var(--line)"></i><b>Línea</b><span>#EEE9DF · bordes finos</span></div>
+            <div class="sw"><i style="background:var(--text)"></i><b>Texto</b><span>#1E1A2B</span></div>
+            <div class="sw"><i style="background:var(--muted)"></i><b>Texto suave</b><span>#6B6577 · secundario</span></div>
+            <div class="sw"><i style="background:var(--accent)"></i><b>Acento</b><span>#2E1F4F · acción y selección</span></div>
+            <div class="sw"><i style="background:var(--accent-soft)"></i><b>Acento suave</b><span>#ECE8F4 · iniciales, rol</span></div>
+            <div class="sw"><i style="background:var(--danger)"></i><b>Aviso</b><span>#A8453A · vencido, alta, error</span></div>
+            <div class="sw"><i style="background:var(--danger-soft)"></i><b>Aviso suave</b><span>#F6E4E1</span></div>
+          </div>
+        </article>
+
+        <div class="cols-2">
+          <article class="card">
+            <div class="card-head"><h3>Espacio · escala de 4 px</h3></div>
+            <div class="ruler">
+              <div><i style="width:4px;height:4px"></i>4</div><div><i style="width:8px;height:8px"></i>8</div><div><i style="width:12px;height:12px"></i>12</div>
+              <div><i style="width:16px;height:16px"></i>16</div><div><i style="width:24px;height:24px"></i>24</div><div><i style="width:32px;height:32px"></i>32</div><div><i style="width:48px;height:48px"></i>48</div>
+            </div>
+            <ul class="rules" style="margin-top:var(--s4)">
+              <li><b>Margen de página</b> 32 (16 en móvil)</li>
+              <li><b>Relleno de tarjeta</b> 24 (16 en móvil)</li>
+              <li><b>Hueco entre tarjetas</b> 16</li>
+              <li><b>Entre bloques grandes</b> 32</li>
+              <li><b>Fila de lista</b> 12 arriba y abajo</li>
+            </ul>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Forma y tipografía</h3></div>
+            <ul class="rules">
+              <li><b>Radios</b> 8 campos · 12 tarjetas internas · 20 tarjetas · píldora en botones y etiquetas</li>
+              <li><b>Bordes</b> siempre 1 px, color línea</li>
+              <li><b>Sombra</b> una sola, suave, solo en tarjetas</li>
+              <li><b>Tamaños</b> 12 · 13 · 14 · 15 · 17 · 22 · 28</li>
+              <li><b>Pesos</b> 400 normal · 500 medio · 600 negrita</li>
+            </ul>
+            <div style="margin-top:var(--s4)"><h1 style="font-size:var(--fs-2xl)">Título 28</h1><h2>Título 22</h2><p>Texto 15, el normal de la aplicación.</p><p class="muted">Texto suave 14, para lo secundario.</p><p class="small">Pie 13 · Etiqueta 12</p></div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="card-head"><h3>Componentes</h3><span class="small">Los únicos que existen</span></div>
+          <div class="stack-y" style="gap:var(--s4)">
+            <div class="demo"><button class="btn">Principal</button><button class="btn btn--ghost">Secundario</button><button class="btn btn--text">Quitar</button><button class="link">Enlace</button></div>
+            <div class="demo"><span class="badge badge--accent">Propietario</span><span class="badge">Miembro</span><span class="badge badge--danger badge--dot">Alta</span><span class="badge badge--dot">Media</span><span class="badge badge--outline badge--dot">Baja</span></div>
+            <div class="demo"><span class="avatar">P</span><span class="avatar avatar--me">M</span><span class="chip">E</span><span class="chip chip--lg">E</span><span class="check"></span><span class="check on">✓</span><div class="progress" style="width:200px"><div class="bar"><i style="width:55%"></i></div>5 de 9</div></div>
+            <div class="demo"><input class="input" style="max-width:260px" placeholder="Campo de texto"><span class="select">Mover a… ▾</span><span class="switch"><i></i>Mostrar hechas</span><div class="seg"><button aria-pressed="true">Por fecha</button><button aria-pressed="false">Por proyecto</button></div></div>
+          </div>
+          <ul class="rules" style="margin-top:var(--s4)">
+            <li><b>Prioridad:</b> alta en aviso, media neutra, baja con contorno. Ya no hay ocre ni verde.</li>
+            <li><b>Iniciales de proyecto y de persona:</b> siempre el acento suave. Una sola variante.</li>
+            <li><b>Rojo terroso</b> únicamente para vencido, prioridad alta y errores.</li>
+          </ul>
+        </article>
+      </div>
+    </div></section>
+
+    <!-- ================= ACCESO ================= -->
+    <section data-s="login"><div class="auth">
+      <article class="card">
+        <div class="logo"><span class="logo-mark">N</span> Nombre</div>
+        <div><h2>Inicia sesión</h2><p class="muted" style="margin-top:var(--s1)">Entra para ver tus proyectos y tareas.</p></div>
+        <label class="field">Correo electrónico<input class="input" placeholder="marta@ejemplo.com"></label>
+        <label class="field">Contraseña<input class="input" type="password" placeholder="••••••••"><span class="hint">Mínimo 8 caracteres, con una mayúscula y un número</span></label>
+        <button class="btn btn--block">Entrar</button>
+        <p class="muted" style="text-align:center">¿No tienes cuenta? <button class="link" style="font-size:var(--fs-md)">Regístrate</button></p>
+      </article>
+    </div></section>
+
+    <!-- ================= INICIO ================= -->
+    <section data-s="home"><div class="page">
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Martes, 24 de noviembre</p><h1>Buenos días, Marta</h1>
+          <p class="lead">Tienes <b class="danger">1 vencida</b>, <b>1 para hoy</b> y <b>2 en curso</b>.</p>
+        </div>
+        <button class="btn">Nuevo proyecto</button>
+      </header>
+      <div class="stack-y">
+        <article class="card">
+          <div class="card-head"><h3>Atención ahora</h3><button class="link">Ver mis tareas</button></div>
+          <div class="group danger">Vencidas <span class="count">1</span></div>
+          <ul class="list"><li><span class="check"></span><div class="body"><span class="title">Definir entidades</span><span class="meta">Entrenamientos · Diseñar la base de datos</span></div><span class="when danger">Hace 3 días</span></li></ul>
+          <div class="group">Para hoy <span class="count">1</span></div>
+          <ul class="list"><li><span class="check"></span><div class="body"><span class="title">Maquetar la portada</span><span class="meta">Web del club</span></div><span class="when">Hoy</span></li></ul>
+          <div class="group">En curso <span class="count">2</span></div>
+          <ul class="list">
+            <li><span class="check"></span><div class="body"><span class="title">Configurar el servidor</span><span class="meta">Entrenamientos</span></div><span class="when">28 nov</span></li>
+            <li><span class="check"></span><div class="body"><span class="title">Revisar capítulo 2</span><span class="meta">TFG</span></div><span class="when">Sin fecha</span></li>
+          </ul>
+        </article>
+        <div class="cols-2">
+          <article class="card">
+            <div class="card-head"><h3>Novedades *</h3><span class="small">en tus tareas</span></div>
+            <ul class="list">
+              <li style="align-items:flex-start"><span class="avatar">P</span><div class="body"><span><b style="font-weight:var(--fw-bold)">Pablo</b> comentó en <b style="font-weight:var(--fw-bold)">Definir entidades</b></span><span class="meta">“¿La distancia va en kilómetros o en metros?”</span></div><span class="when">2 h</span></li>
+              <li style="align-items:flex-start"><span class="avatar">L</span><div class="body"><span><b style="font-weight:var(--fw-bold)">Lucía</b> comentó en <b style="font-weight:var(--fw-bold)">Gráficas</b></span><span class="meta">“Ya tengo el borrador, lo subo hoy.”</span></div><span class="when">ayer</span></li>
+              <li style="align-items:flex-start"><span class="avatar">C</span><div class="body"><span><b style="font-weight:var(--fw-bold)">Carlos</b> comentó en <b style="font-weight:var(--fw-bold)">La portada</b></span><span class="meta">“¿Usamos la foto del torneo?”</span></div><span class="when">ayer</span></li>
+            </ul>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Mis proyectos *</h3><button class="link">Ver todos</button></div>
+            <ul class="list">
+              <li><span class="chip">E</span><div class="body"><span class="title">Entrenamientos</span><div class="progress"><div class="bar"><i style="width:55%"></i></div>5 de 9</div></div><span class="when danger">1 vencida</span></li>
+              <li><span class="chip">W</span><div class="body"><span class="title">Web del club</span><div class="progress"><div class="bar"><i style="width:80%"></i></div>8 de 10</div></div></li>
+              <li><span class="chip">T</span><div class="body"><span class="title">TFG</span><div class="progress"><div class="bar"><i style="width:17%"></i></div>1 de 6</div></div></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </div></section>
+
+    <!-- ================= PROYECTOS ================= -->
+    <section data-s="projects"><div class="page">
+      <header class="page-head">
+        <div><p class="eyebrow">Todos los proyectos en los que participas</p><h1>Proyectos</h1></div>
+        <div class="actions"><input class="input search" placeholder="Buscar proyecto…"><button class="btn">Nuevo proyecto</button></div>
+      </header>
+      <div class="projects" id="projects"></div>
+    </div></section>
+
+    <!-- ================= TABLERO ================= -->
+    <section data-s="board"><div class="page">
+      <header class="page-head">
+        <div><p class="eyebrow">Registro de entrenamientos y progreso del club</p><h1>Entrenamientos</h1></div>
+        <div class="actions"><span class="badge badge--accent">Propietario</span><button class="btn btn--ghost">Miembros · 3</button><button class="btn">Nueva tarea</button></div>
+      </header>
+      <div class="board">
+        <div class="column">
+          <div class="column-head">Por hacer <span class="count">3</span></div>
+          <button class="tcard"><span class="ttl">Diseñar la base de datos</span><div class="row"><span class="badge badge--danger badge--dot">Alta</span><span class="small">10 dic</span></div><div class="progress"><div class="bar"><i style="width:66%"></i></div>2/3</div><div class="row"><span class="select">Mover a… ▾</span><span class="avatar">P</span></div></button>
+          <button class="tcard"><span class="ttl">Pantalla de registro de entrenamientos</span><div class="row"><span class="badge badge--dot">Media</span><span class="small">Sin fecha</span></div><div class="row"><span class="select">Mover a… ▾</span><span class="avatar">L</span></div></button>
+          <button class="tcard"><span class="ttl">Gráficas de progreso</span><div class="row"><span class="badge badge--outline badge--dot">Baja</span><span class="small">20 dic</span></div><div class="row"><span class="select">Mover a… ▾</span><span class="small">Sin responsable</span></div></button>
+        </div>
+        <div class="column">
+          <div class="column-head">En curso <span class="count">1</span></div>
+          <button class="tcard"><span class="ttl">Configurar el servidor</span><div class="row"><span class="badge badge--dot">Media</span><span class="small">15 dic</span></div><div class="progress"><div class="bar"><i style="width:25%"></i></div>1/4</div><div class="row"><span class="select">Mover a… ▾</span><span class="avatar avatar--me">M</span></div></button>
+        </div>
+        <div class="column">
+          <div class="column-head">Hecha <span class="count">1</span></div>
+          <button class="tcard done"><span class="ttl">Crear el repositorio</span><div class="row"><span class="badge badge--outline badge--dot">Baja</span><span class="small">1 dic</span></div><div class="row"><span class="select">Mover a… ▾</span><span class="avatar avatar--me">M</span></div></button>
+        </div>
+      </div>
+    </div></section>
+
+    <!-- ================= DETALLE ================= -->
+    <section data-s="detail">
+      <div class="scrim"></div>
+      <aside class="drawer">
+        <div class="drawer-head">
+          <div style="display:flex;flex-direction:column;gap:var(--s2)"><span class="badge" style="align-self:flex-start">Entrenamientos</span><h2>Diseñar la base de datos</h2></div>
+          <button class="x" aria-label="Cerrar">✕</button>
+        </div>
+        <dl class="fields">
+          <dt>Estado</dt><dd><span class="select" style="font-size:var(--fs-sm)">Por hacer ▾</span></dd>
+          <dt>Prioridad</dt><dd><span class="badge badge--danger badge--dot">Alta</span></dd>
+          <dt>Fecha límite</dt><dd>10 dic 2026</dd>
+          <dt>Responsable</dt><dd><span class="avatar">P</span> Pablo</dd>
+        </dl>
+        <div><div class="section-label">Descripción</div><p class="muted">Modelar usuarios, proyectos, tareas y comentarios, y revisar las relaciones con el equipo antes de implementarlas.</p></div>
+        <div>
+          <div class="section-label"><span>Subtareas</span><span>2/3</span></div>
+          <ul class="list">
+            <li><span class="check check--sq on">✓</span><div class="body"><span class="title" style="color:var(--muted);text-decoration:line-through">Definir entidades</span></div><span class="avatar">P</span></li>
+            <li><span class="check check--sq on">✓</span><div class="body"><span class="title" style="color:var(--muted);text-decoration:line-through">Diseñar relaciones</span></div><span class="avatar">P</span></li>
+            <li><span class="check check--sq"></span><div class="body"><span class="title">Revisar el diseño con el equipo</span></div><span class="avatar">L</span></li>
+          </ul>
+        </div>
+        <div>
+          <div class="section-label">Comentarios</div>
+          <div class="comment"><span class="avatar">P</span><div class="bubble"><b>Pablo<span>hace 2 h</span></b>¿La distancia va en kilómetros o en metros?</div></div>
+          <div class="comment"><span class="avatar avatar--me">M</span><div class="bubble"><b>Marta<span>hace 1 h</span></b>En kilómetros, con un decimal.</div></div>
+          <input class="input" placeholder="Escribe un comentario…">
+        </div>
+      </aside>
+    </section>
+
+    <!-- ================= MIS TAREAS ================= -->
+    <section data-s="mine"><div class="page">
+      <header class="page-head">
+        <div><p class="eyebrow">Todo lo asignado a ti, de todos tus proyectos</p><h1>Mis tareas</h1></div>
+        <div class="actions">
+          <div class="seg" role="group" aria-label="Agrupar">
+            <button data-mine="group" data-value="date" aria-pressed="true">Por fecha</button>
+            <button data-mine="group" data-value="project" aria-pressed="false">Por proyecto</button>
+          </div>
+          <button class="switch" data-mine="done" aria-pressed="false"><i></i>Mostrar hechas</button>
+        </div>
+      </header>
+      <article class="card"><div id="mine"></div></article>
+    </div></section>
+
+    <!-- ================= MIEMBROS ================= -->
+    <section data-s="members"><div class="page">
+      <header class="page-head">
+        <div><p class="eyebrow">Entrenamientos</p><h1>Miembros</h1></div>
+      </header>
+      <div class="stack-y">
+        <article class="card">
+          <div class="card-head"><h3>Añadir un miembro</h3><span class="small">Solo usuarios ya registrados</span></div>
+          <div class="actions"><input class="input" style="flex:1;min-width:220px" placeholder="correo@ejemplo.com"><button class="btn">Añadir</button></div>
+        </article>
+        <article class="card">
+          <ul class="list">
+            <li><span class="avatar avatar--me">M</span><div class="body"><span class="title">Marta</span><span class="meta">marta@ejemplo.com</span></div><span class="badge badge--accent">Propietario</span></li>
+            <li><span class="avatar">P</span><div class="body"><span class="title">Pablo</span><span class="meta">pablo@ejemplo.com</span></div><span class="badge">Miembro</span><button class="btn btn--text">Quitar</button></li>
+            <li><span class="avatar">L</span><div class="body"><span class="title">Lucía</span><span class="meta">lucia@ejemplo.com</span></div><span class="badge">Miembro</span><button class="btn btn--text">Quitar</button></li>
+          </ul>
+        </article>
+      </div>
+    </div></section>
+
+  </main>
+</div>
+
+<script>
+  const NAMES = ['Entrenamientos','Web del club','TFG','App de recetas','Reforma del piso','Torneo de verano','Blog personal','Plan de estudios','Campaña de otoño','Tienda online','Boda de Laura','Liga de pádel','Curso de Python','Rediseño de logo','Huerto urbano','Viaje a Japón','Mudanza','Podcast','Tesis de máster','Aplicación móvil'];
+  const DESCS = ['Registro de entrenamientos del club','Nueva web y reservas de pistas','Trabajo de fin de grado','Recetario con lista de la compra','Obras y presupuestos','Calendario y inscripciones','Artículos y diseño','Asignaturas y exámenes','Piezas para redes sociales','Catálogo y pagos','Invitaciones y proveedores','Clasificación y partidos','Ejercicios y proyecto final','Marca y papelería','Calendario de siembra','Itinerario y reservas','Cajas y gestiones','Guiones y episodios','Capítulos y bibliografía','Pantallas y API'];
+  const MEMBERS = [3,5,1,2,4,6,1,2,8,3,5,12,2,3,4,2,1,2,1,7];
+  const AGO = ['hace 2 horas','ayer','hace 3 días','hace 1 semana','hace 2 semanas','hace 1 mes'];
+  function renderProjects(count) {
+    document.getElementById('projects').innerHTML = Array.from({ length: count }, (_, i) => {
+      const owner = i % 3 !== 1, n = MEMBERS[i % MEMBERS.length], name = NAMES[i % NAMES.length];
+      const desc = i % 5 === 2 ? null : DESCS[i % DESCS.length];
+      const total = 6 + (i * 5) % 9, done = Math.min(total, (i * 3) % total), over = i % 4 === 0 ? 1 + i % 2 : 0;
+      return `<button class="card pcard"><span class="chip chip--lg">${name[0]}</span>
+        <div class="pbody">
+          <div class="ptop"><h3>${name}</h3><span class="badge ${owner ? 'badge--accent' : ''}">${owner ? 'Propietario' : 'Miembro'}</span></div>
+          <p class="desc ${desc ? '' : 'empty'}">${desc ?? 'Sin descripción'}</p>
+          <div class="progress"><div class="bar"><i style="width:${Math.round(done / total * 100)}%"></i></div><span>${done} de ${total} *</span>${over ? `<span class="danger" style="font-weight:var(--fw-bold)">${over} vencida${over > 1 ? 's' : ''}</span>` : ''}</div>
+          <div class="foot"><span>${n === 1 ? 'Solo tú' : n + ' miembros'}</span><span>Actualizado ${AGO[i % AGO.length]}</span></div>
+        </div></button>`;
+    }).join('');
+  }
+  function syncNav() {
+    const screen = document.body.dataset.screen;
+    document.querySelectorAll('.sidebar [data-nav]').forEach((b) => {
+      if (b.dataset.nav.split(' ').includes(screen)) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+  }
+  const MINE = [
+    { t: 'Definir entidades', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'high', due: 'Hace 3 días', rank: 0, late: true },
+    { t: 'Maquetar la portada', p: 'Web del club', par: null, pr: 'mid', due: 'Hoy', rank: 1 },
+    { t: 'Configurar el servidor', p: 'Entrenamientos', par: null, pr: 'mid', due: '28 nov', rank: 2 },
+    { t: 'Crear el repositorio', p: 'Entrenamientos', par: null, pr: 'low', due: '1 dic', rank: 3, done: true },
+    { t: 'Diseñar relaciones', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'low', due: '5 dic', rank: 4 },
+    { t: 'Revisar capítulo 2', p: 'TFG', par: null, pr: 'mid', due: 'Sin fecha', rank: 5 },
+  ];
+  const mineState = { group: 'date', done: false };
+  const PRIO = { high: '<span class="badge badge--danger badge--dot">Alta</span>', mid: '<span class="badge badge--dot">Media</span>', low: '<span class="badge badge--outline badge--dot">Baja</span>' };
+  function mineRow(t, withProject) {
+    const meta = withProject ? [t.p, t.par].filter(Boolean).join(' · ') : (t.par ?? '');
+    return `<li class="${t.done ? 'is-done' : ''}"><span class="check ${t.done ? 'on' : ''}">${t.done ? '✓' : ''}</span>
+      <div class="body"><span class="title">${t.t}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</div>
+      ${PRIO[t.pr]}<span class="when ${t.late ? 'danger' : ''}">${t.due}</span></li>`;
+  }
+  function renderMine() {
+    const tasks = MINE.filter((t) => mineState.done || !t.done).sort((a, b) => a.rank - b.rank);
+    let html;
+    if (!tasks.length) html = '<p class="empty-state">No tienes tareas pendientes.</p>';
+    else if (mineState.group === 'date') html = `<ul class="list">${tasks.map((t) => mineRow(t, true)).join('')}</ul>`;
+    else {
+      const groups = new Map();
+      tasks.forEach((t) => groups.set(t.p, [...(groups.get(t.p) ?? []), t]));   // el proyecto con lo más urgente va primero
+      html = [...groups].map(([name, items]) => `<div class="proj-head"><span class="chip">${name[0]}</span><h3>${name}</h3><span class="count">${items.length}</span></div>
+        <ul class="list">${items.map((t) => mineRow(t, false)).join('')}</ul>`).join('');
+    }
+    document.getElementById('mine').innerHTML = html;
+    document.querySelectorAll('[data-mine="group"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === mineState.group)));
+    document.querySelector('[data-mine="done"]').setAttribute('aria-pressed', String(mineState.done));
+  }
+  document.querySelectorAll('[data-mine]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.mine === 'group') mineState.group = b.dataset.value; else mineState.done = !mineState.done;
+    renderMine();
+  }));
+  renderProjects(4); syncNav(); renderMine();
+  document.querySelectorAll('[data-set]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.dataset.set === 'count') renderProjects(Number(button.dataset.value));
+      else document.body.dataset[button.dataset.set] = button.dataset.value;
+      document.querySelectorAll(`[data-set="${button.dataset.set}"]`).forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+      syncNav();
+    });
+  });
+</script>
+</body>
+</html>
