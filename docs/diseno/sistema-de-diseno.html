@@ -85,8 +85,7 @@
   .cols-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--gap); }
   [data-s] { display: none; }
   body[data-screen="system"] [data-s="system"], body[data-screen="login"] [data-s="login"], body[data-screen="home"] [data-s="home"],
-  body[data-screen="projects"] [data-s="projects"], body[data-screen="board"] [data-s="board"], body[data-screen="detail"] [data-s="board"],
-  body[data-screen="detail"] [data-s="detail"], body[data-screen="mine"] [data-s="mine"], body[data-screen="members"] [data-s="members"] { display: block; }
+  body[data-screen="projects"] [data-s="projects"], body[data-screen="board"] [data-s="board"], body[data-screen="detail"] [data-s="detail"], body[data-screen="mine"] [data-s="mine"], body[data-screen="members"] [data-s="members"] { display: block; }
 
   /* ---------- Barra lateral ---------- */
   .logo { display: flex; align-items: center; gap: var(--s3); font-weight: var(--fw-bold); letter-spacing: -.01em; }
@@ -186,11 +185,19 @@
   .tcard.done .ttl { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
   .ttl { font-weight: var(--fw-medium); line-height: 1.35; }
 
-  /* ---------- Detalle (panel lateral) ---------- */
-  .scrim { position: fixed; inset: 49px 0 0 0; background: rgb(30 26 43 / 25%); z-index: 30; }
-  .drawer { position: fixed; top: 49px; right: 0; bottom: 0; width: min(520px, 100%); background: var(--surface); border-left: 1px solid var(--line); z-index: 40; overflow-y: auto; padding: var(--s5); display: flex; flex-direction: column; gap: var(--s5); box-shadow: -12px 0 40px rgb(30 26 43 / 10%); }
-  .drawer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); }
-  .x { border: 1px solid var(--line-strong); background: transparent; border-radius: 50%; width: 32px; height: 32px; color: var(--muted); flex: none; }
+  /* ---------- Detalle (pantalla propia) ---------- */
+  .page.narrow { max-width: 560px; }
+  .back { display: inline-block; margin-bottom: var(--s4); font-size: var(--fs-sm); color: var(--muted); border: 0; background: none; padding: 0; }
+  .back:hover { color: var(--accent); }
+  .cnt { margin-left: var(--s1); padding: 0 var(--s2); border-radius: var(--r-full); background: var(--accent-mid); color: var(--accent); font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+  .add { display: flex; align-items: center; gap: var(--s3); padding-top: var(--s3); }
+  .list > li + .add, .list + .add { border-top: 1px solid var(--line); }
+  .plus { width: 18px; height: 18px; flex: none; display: grid; place-items: center; color: var(--faint); font-size: var(--fs-lg); line-height: 1; }
+  .add:focus-within .plus { color: var(--accent); }
+  .bare { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; font-weight: var(--fw-medium); outline: none; }
+  .bare::placeholder { color: var(--faint); font-weight: var(--fw-normal); }
+  textarea.input { resize: none; line-height: 1.5; }
+  .tools { display: flex; gap: var(--s3); margin-top: var(--s1); }
   .fields { display: grid; grid-template-columns: 112px 1fr; gap: var(--s3); align-items: center; font-size: var(--fs-md); }
   .fields dt { color: var(--muted); }
   .fields dd { display: flex; align-items: center; gap: var(--s2); }
@@ -212,6 +219,15 @@
   button.switch { border: 0; background: transparent; padding: 0; }
   .switch[aria-pressed="true"] i { background: var(--accent); }
   .switch[aria-pressed="true"] i::after { left: 18px; }
+  .list--rows { margin: 0 calc(-1 * var(--s3)); }
+  .list--rows > li { padding: var(--s3); border-radius: var(--r-sm); }
+  .list--rows > li + li { border-top: 0; box-shadow: 0 -1px 0 var(--line); }
+  .list--rows > li:hover, .list--rows > li:hover + li { box-shadow: none; }
+  .list--rows > li:hover { background: var(--accent-soft); }
+  .gl { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--s1); }
+  .gl .count { color: inherit; }
+  .gl.danger .count { background: var(--danger-soft); }
+  .gsec + .gsec { margin-top: var(--s4); }
   .list > li.is-done .title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
   .proj-head { display: flex; align-items: center; gap: var(--s3); padding: var(--s4) 0 var(--s2); }
   .proj-head:first-child { padding-top: 0; }
@@ -417,9 +433,10 @@
 
     <!-- ================= TABLERO ================= -->
     <section data-s="board"><div class="page">
+      <button class="back">← Proyectos</button>
       <header class="page-head">
         <div><p class="eyebrow">Registro de entrenamientos y progreso del club</p><h1>Entrenamientos</h1></div>
-        <div class="actions"><span class="badge badge--accent">Propietario</span><button class="btn btn--ghost">Miembros · 3</button><button class="btn">Nueva tarea</button></div>
+        <div class="actions"><span class="badge badge--accent">Propietario</span><button class="btn btn--ghost">Miembros <span class="cnt">3</span></button><button class="btn btn--ghost">Editar</button><button class="btn">Nueva tarea</button></div>
       </header>
       <div class="board">
         <div class="column">
@@ -440,41 +457,47 @@
     </div></section>
 
     <!-- ================= DETALLE ================= -->
-    <section data-s="detail">
-      <div class="scrim"></div>
-      <aside class="drawer">
-        <div class="drawer-head">
-          <div style="display:flex;flex-direction:column;gap:var(--s2)"><span class="badge" style="align-self:flex-start">Entrenamientos</span><h2>Diseñar la base de datos</h2></div>
-          <button class="x" aria-label="Cerrar">✕</button>
-        </div>
-        <dl class="fields">
-          <dt>Estado</dt><dd><span class="select" style="font-size:var(--fs-sm)">Por hacer ▾</span></dd>
-          <dt>Prioridad</dt><dd><span class="badge badge--danger badge--dot">Alta</span></dd>
-          <dt>Fecha límite</dt><dd>10 dic 2026</dd>
-          <dt>Responsable</dt><dd><span class="avatar">P</span> Pablo</dd>
-        </dl>
-        <div><div class="section-label">Descripción</div><p class="muted">Modelar usuarios, proyectos, tareas y comentarios, y revisar las relaciones con el equipo antes de implementarlas.</p></div>
-        <div>
+    <section data-s="detail"><div class="page narrow">
+      <button class="back">← Entrenamientos</button>
+      <header class="page-head">
+        <div><p class="eyebrow">Entrenamientos</p><h1>Diseñar la base de datos</h1></div>
+        <button class="btn btn--ghost">Editar</button>
+      </header>
+      <div class="stack-y">
+        <article class="card">
+          <dl class="fields">
+            <dt>Estado</dt><dd><span class="select" style="font-size:var(--fs-sm)">Por hacer ▾</span></dd>
+            <dt>Prioridad</dt><dd><span class="badge badge--danger badge--dot">Alta</span></dd>
+            <dt>Fecha límite</dt><dd>10 dic</dd>
+            <dt>Responsable</dt><dd><span class="avatar">P</span> Pablo</dd>
+          </dl>
+        </article>
+        <article class="card"><div class="section-label">Descripción</div><p class="muted">Modelar usuarios, proyectos, tareas y comentarios, y revisar las relaciones con el equipo antes de implementarlas.</p></article>
+        <article class="card">
           <div class="section-label"><span>Subtareas</span><span>2/3</span></div>
+          <div class="progress" style="margin-bottom:var(--s2)"><div class="bar"><i style="width:66%"></i></div></div>
           <ul class="list">
-            <li><span class="check check--sq on">✓</span><div class="body"><span class="title" style="color:var(--muted);text-decoration:line-through">Definir entidades</span></div><span class="avatar">P</span></li>
-            <li><span class="check check--sq on">✓</span><div class="body"><span class="title" style="color:var(--muted);text-decoration:line-through">Diseñar relaciones</span></div><span class="avatar">P</span></li>
+            <li class="is-done"><span class="check check--sq on">✓</span><div class="body"><span class="title">Definir entidades</span></div><span class="avatar">P</span></li>
+            <li class="is-done"><span class="check check--sq on">✓</span><div class="body"><span class="title">Diseñar relaciones</span></div><span class="avatar">P</span></li>
             <li><span class="check check--sq"></span><div class="body"><span class="title">Revisar el diseño con el equipo</span></div><span class="avatar">L</span></li>
           </ul>
-        </div>
-        <div>
-          <div class="section-label">Comentarios</div>
+          <div class="add"><span class="plus">+</span><input class="bare" placeholder="Añadir una subtarea…"></div>
+        </article>
+        <article class="card">
+          <div class="section-label"><span>Comentarios</span><span>2</span></div>
           <div class="comment"><span class="avatar">P</span><div class="bubble"><b>Pablo<span>hace 2 h</span></b>¿La distancia va en kilómetros o en metros?</div></div>
-          <div class="comment"><span class="avatar avatar--me">M</span><div class="bubble"><b>Marta<span>hace 1 h</span></b>En kilómetros, con un decimal.</div></div>
-          <input class="input" placeholder="Escribe un comentario…">
-        </div>
-      </aside>
-    </section>
+          <div class="comment"><span class="avatar avatar--me">M</span><div class="bubble"><b>Marta<span>hace 1 h · editado</span></b>En kilómetros, con un decimal.<div class="tools"><button class="link">Editar</button><button class="btn btn--text">Eliminar</button></div></div></div>
+          <textarea class="input" rows="2" placeholder="Escribe un comentario…"></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:var(--s2)"><button class="btn">Comentar</button></div>
+        </article>
+        <div style="display:flex;justify-content:flex-end"><button class="btn btn--text">Eliminar tarea</button></div>
+      </div>
+    </div></section>
 
     <!-- ================= MIS TAREAS ================= -->
     <section data-s="mine"><div class="page">
       <header class="page-head">
-        <div><p class="eyebrow">Todo lo asignado a ti, de todos tus proyectos</p><h1>Mis tareas</h1></div>
+        <div><p class="eyebrow">Todo lo asignado a ti, de todos tus proyectos</p><h1>Mis tareas</h1><p class="lead">Tienes <b class="danger">1 vencida</b>, <b>1 para hoy</b> y <b>1 en curso</b>.</p></div>
         <div class="actions">
           <div class="seg" role="group" aria-label="Agrupar">
             <button data-mine="group" data-value="date" aria-pressed="true">Por fecha</button>
@@ -535,31 +558,35 @@
     });
   }
   const MINE = [
-    { t: 'Definir entidades', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'high', due: 'Hace 3 días', rank: 0, late: true },
-    { t: 'Maquetar la portada', p: 'Web del club', par: null, pr: 'mid', due: 'Hoy', rank: 1 },
-    { t: 'Configurar el servidor', p: 'Entrenamientos', par: null, pr: 'mid', due: '28 nov', rank: 2 },
-    { t: 'Crear el repositorio', p: 'Entrenamientos', par: null, pr: 'low', due: '1 dic', rank: 3, done: true },
-    { t: 'Diseñar relaciones', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'low', due: '5 dic', rank: 4 },
-    { t: 'Revisar capítulo 2', p: 'TFG', par: null, pr: 'mid', due: 'Sin fecha', rank: 5 },
+    { t: 'Definir entidades', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'high', due: '10 ene 2020', b: 'overdue', late: true },
+    { t: 'Maquetar la portada', p: 'Web del club', par: null, pr: 'mid', due: '24 nov', b: 'today' },
+    { t: 'Configurar el servidor', p: 'Entrenamientos', par: null, pr: 'mid', due: '28 nov', b: 'week' },
+    { t: 'Diseñar relaciones', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'low', due: '5 dic', b: 'later' },
+    { t: 'Revisar capítulo 2', p: 'TFG', par: null, pr: 'mid', due: 'Sin fecha', b: 'none' },
+    { t: 'Crear el repositorio', p: 'Entrenamientos', par: null, pr: 'low', due: '1 dic', b: 'done', done: true },
   ];
+  const BUCKETS = [['overdue', 'Vencidas'], ['today', 'Hoy'], ['week', 'Próximos 7 días'], ['later', 'Más adelante'], ['none', 'Sin fecha'], ['done', 'Hechas']];
   const mineState = { group: 'date', done: false };
   const PRIO = { high: '<span class="badge badge--danger badge--dot">Alta</span>', mid: '<span class="badge badge--dot">Media</span>', low: '<span class="badge badge--outline badge--dot">Baja</span>' };
   function mineRow(t, withProject) {
-    const meta = withProject ? [t.p, t.par].filter(Boolean).join(' · ') : (t.par ?? '');
-    return `<li class="${t.done ? 'is-done' : ''}"><span class="check ${t.done ? 'on' : ''}">${t.done ? '✓' : ''}</span>
-      <div class="body"><span class="title">${t.t}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</div>
-      ${PRIO[t.pr]}<span class="when ${t.late ? 'danger' : ''}">${t.due}</span></li>`;
+    return `<li class="${t.done ? 'is-done' : ''}"><span class="check check--sq ${t.done ? 'on' : ''}">${t.done ? '✓' : ''}</span>
+      <div class="body"><span class="title">${t.t}</span>${t.par ? `<span class="meta">Subtarea de «${t.par}»</span>` : ''}</div>
+      ${withProject ? `<span class="badge badge--outline">${t.p}</span>` : ''}${PRIO[t.pr]}<span class="when ${t.late ? 'danger' : ''}">${t.due}</span></li>`;
   }
   function renderMine() {
-    const tasks = MINE.filter((t) => mineState.done || !t.done).sort((a, b) => a.rank - b.rank);
+    const tasks = MINE.filter((t) => mineState.done || !t.done);
     let html;
     if (!tasks.length) html = '<p class="empty-state">No tienes tareas pendientes.</p>';
-    else if (mineState.group === 'date') html = `<ul class="list">${tasks.map((t) => mineRow(t, true)).join('')}</ul>`;
-    else {
+    else if (mineState.group === 'date') {
+      html = BUCKETS.map(([key, label]) => {
+        const items = tasks.filter((t) => t.b === key);
+        return items.length ? `<section class="gsec"><div class="gl ${key === 'overdue' ? 'danger' : ''}">${label} <span class="count">${items.length}</span></div><ul class="list list--rows">${items.map((t) => mineRow(t, true)).join('')}</ul></section>` : '';
+      }).join('');
+    } else {
       const groups = new Map();
       tasks.forEach((t) => groups.set(t.p, [...(groups.get(t.p) ?? []), t]));   // el proyecto con lo más urgente va primero
-      html = [...groups].map(([name, items]) => `<div class="proj-head"><span class="chip">${name[0]}</span><h3>${name}</h3><span class="count">${items.length}</span></div>
-        <ul class="list">${items.map((t) => mineRow(t, false)).join('')}</ul>`).join('');
+      html = [...groups].map(([name, items]) => `<section class="gsec"><div class="proj-head"><span class="chip">${name[0]}</span><h3>${name}</h3><span class="count">${items.length}</span></div>
+        <ul class="list list--rows">${items.map((t) => mineRow(t, false)).join('')}</ul></section>`).join('');
     }
     document.getElementById('mine').innerHTML = html;
     document.querySelectorAll('[data-mine="group"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === mineState.group)));
