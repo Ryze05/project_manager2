@@ -8,6 +8,7 @@ import type { CurrentUser, ProjectView, TaskView } from "@/lib/types";
 import projectStyles from "../../../projects.module.css";
 import { deleteTaskAction } from "../../actions";
 import { AddSubtaskForm } from "./AddSubtaskForm";
+import { Comments } from "./comments/Comments";
 import { StatusSelect } from "./StatusSelect";
 import { SubtaskToggle } from "./SubtaskToggle";
 import styles from "./task.module.css";
@@ -122,6 +123,13 @@ export default async function TaskPage({
             <AddSubtaskForm projectId={projectId} parentId={taskId} />
           </Card>
         )}
+
+        <Comments
+          projectId={projectId}
+          taskId={taskId}
+          currentUserId={me.id}
+          isOwner={project.role === "OWNER"}
+        />
 
         {canDelete && (
           <div className={styles.footer}>

@@ -48,3 +48,13 @@ export interface TaskView {
 
 /** The three columns, always present, already ordered by the API. */
 export type Board = Record<TaskStatus, TaskView[]>;
+
+export interface CommentView {
+  id: string;
+  content: string;
+  createdAt: string;
+  /** null until the comment is edited. */
+  editedAt: string | null;
+  taskId: string;
+  author: { id: string; name: string; email: string };
+}
