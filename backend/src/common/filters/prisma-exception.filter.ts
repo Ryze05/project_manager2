@@ -10,9 +10,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 
 /** Maps known Prisma errors to HTTP responses instead of a generic 500. */
 @Catch(Prisma.PrismaClientKnownRequestError)
-export class PrismaExceptionFilter
-  implements ExceptionFilter<Prisma.PrismaClientKnownRequestError>
-{
+export class PrismaExceptionFilter implements ExceptionFilter<Prisma.PrismaClientKnownRequestError> {
   private readonly logger = new Logger(PrismaExceptionFilter.name);
 
   catch(exception: Prisma.PrismaClientKnownRequestError, host: ArgumentsHost) {
