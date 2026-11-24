@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { TaskCheck } from "@/components/TaskCheck/TaskCheck";
 import { Avatar, ButtonLink, Card, ProgressBar } from "@/components/ui";
 import { api, unwrap } from "@/lib/api";
 import { formatDueDate, isOverdue } from "@/lib/format";
@@ -10,7 +11,6 @@ import { deleteTaskAction } from "../../actions";
 import { AddSubtaskForm } from "./AddSubtaskForm";
 import { Comments } from "./comments/Comments";
 import { StatusSelect } from "./StatusSelect";
-import { SubtaskToggle } from "./SubtaskToggle";
 import styles from "./task.module.css";
 
 /** Detail of a task or a subtask (both are the same entity in the API). */
@@ -104,9 +104,9 @@ export default async function TaskPage({
             <ul className={styles.list}>
               {subtasks.map((subtask) => (
                 <li key={subtask.id} className={subtask.status === "DONE" ? styles.isDone : undefined}>
-                  <SubtaskToggle
+                  <TaskCheck
                     projectId={projectId}
-                    subtaskId={subtask.id}
+                    taskId={subtask.id}
                     done={subtask.status === "DONE"}
                   />
                   <Link href={`${taskPath}/${subtask.id}`} className={styles.subtaskTitle}>

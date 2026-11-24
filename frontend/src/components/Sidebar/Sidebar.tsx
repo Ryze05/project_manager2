@@ -10,9 +10,12 @@ const RECENT_COUNT = 3;
 export function Sidebar({
   user,
   projects,
+  pendingCount,
 }: {
   user: CurrentUser;
   projects: ProjectView[];
+  /** Tasks assigned to the user that are not done. */
+  pendingCount: number;
 }) {
   // The API already returns projects most recently updated first.
   const recent = projects.slice(0, RECENT_COUNT);
@@ -25,6 +28,10 @@ export function Sidebar({
 
       <nav className={styles.nav} aria-label="Principal">
         <NavLink href="/proyectos">Proyectos</NavLink>
+        <NavLink href="/mis-tareas">
+          Mis tareas
+          {pendingCount > 0 && <span className={styles.pill}>{pendingCount}</span>}
+        </NavLink>
       </nav>
 
       {recent.length > 0 && (

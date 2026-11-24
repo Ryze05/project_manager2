@@ -77,7 +77,8 @@ export async function moveTaskAction(
     // E.g. 409: the task still has pending subtasks.
     return { error: result.message };
   }
-  revalidatePath(`/proyectos/${projectId}`);
+  // A status shows up on the board, the detail, "mis tareas" and the sidebar counter.
+  revalidatePath("/", "layout");
   return {};
 }
 

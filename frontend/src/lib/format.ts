@@ -35,3 +35,26 @@ export function isOverdue(iso: string, now = new Date()): boolean {
   const today = now.toLocaleDateString("sv-SE"); // YYYY-MM-DD in local time
   return iso.slice(0, 10) < today;
 }
+
+export type DueBucket = "overdue" | "today" | "week" | "later" | "none" | "done";
+
+/** Local date as YYYY-MM-DD, `days` from `from`. */
+function ymd(from: Date, days = 0): string {
+  const d = new Date(from);
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString("sv-SE");
+}
+
+/**
+ * Where a task sits in time: overdue, today, the next 7 days, later, or no date.
+ * Done tasks have their own bucket (an old due date no longer makes them overdue).
+ */
+export function dueBucket(iso: string | null, done: boolean, now = new Date()): DueBucket {
+  if (done) return "done";
+  if (iso === null) return "none";
+  const day = iso.slice(0, 10);
+  if (day < ymd(now)) return "overdue";
+  if (day === ymd(now)) return "today";
+  if (day <= ymd(now, 7)) return "week";
+  return "later";
+}

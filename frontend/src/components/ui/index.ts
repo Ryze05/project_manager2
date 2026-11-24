@@ -6,5 +6,7 @@ export { Card } from "./Card";
 export { Input } from "./Input";
 export { PasswordInput } from "./PasswordInput";
 export { ProgressBar } from "./ProgressBar";
+export { Segmented } from "./Segmented";
 export { Select } from "./Select";
+export { SwitchLink } from "./SwitchLink";
 export { Textarea } from "./Textarea";

@@ -58,3 +58,9 @@ export interface CommentView {
   taskId: string;
   author: { id: string; name: string; email: string };
 }
+
+/** A task or subtask assigned to the caller, with where it lives (`GET /me/tasks`). */
+export interface MyTaskView extends TaskView {
+  project: { id: string; name: string };
+  parent: { id: string; title: string } | null;
+}

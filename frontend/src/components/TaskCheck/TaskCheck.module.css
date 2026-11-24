@@ -1,0 +1,31 @@
+.check {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  color: var(--on-accent);
+  line-height: 1;
+}
+
+.check:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.on:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.check:disabled {
+  opacity: 0.5;
+}

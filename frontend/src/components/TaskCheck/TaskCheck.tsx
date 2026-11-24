@@ -1,18 +1,18 @@
 "use client";
 
 import { useTransition } from "react";
+import { moveTaskAction } from "@/app/(app)/proyectos/[projectId]/actions";
 import type { TaskStatus } from "@/lib/types";
-import { moveTaskAction } from "../../actions";
-import styles from "./task.module.css";
+import styles from "./TaskCheck.module.css";
 
-/** Check box of a subtask: done <-> to do. */
-export function SubtaskToggle({
+/** Check box of a task or subtask: done <-> to do. */
+export function TaskCheck({
   projectId,
-  subtaskId,
+  taskId,
   done,
 }: {
   projectId: string;
-  subtaskId: string;
+  taskId: string;
   done: boolean;
 }) {
   const [pending, startTransition] = useTransition();
@@ -20,7 +20,7 @@ export function SubtaskToggle({
   function toggle() {
     const next: TaskStatus = done ? "TODO" : "DONE";
     startTransition(async () => {
-      const result = await moveTaskAction(projectId, subtaskId, next);
+      const result = await moveTaskAction(projectId, taskId, next);
       if (result.error) throw new Error(result.error);
     });
   }
@@ -28,7 +28,7 @@ export function SubtaskToggle({
   return (
     <button
       type="button"
-      className={[styles.check, done && styles.checkOn].filter(Boolean).join(" ")}
+      className={[styles.check, done && styles.on].filter(Boolean).join(" ")}
       aria-label={done ? "Marcar como pendiente" : "Marcar como hecha"}
       aria-pressed={done}
       disabled={pending}
