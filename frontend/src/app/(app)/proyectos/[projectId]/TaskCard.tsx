@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PriorityBadge } from "@/components/PriorityBadge";
-import { Avatar, ProgressBar } from "@/components/ui";
+import { Avatar, AvatarStack, ProgressBar } from "@/components/ui";
 import { formatDueDate, isOverdue } from "@/lib/format";
 import type { TaskView } from "@/lib/types";
 import styles from "./board.module.css";
@@ -27,7 +27,12 @@ export function TaskCard({
           {task.dueDate ? formatDueDate(task.dueDate) : "Sin fecha"}
         </span>
       </div>
-      <ProgressBar done={task.subtaskProgress.done} total={task.subtaskProgress.total} />
+      {task.subtaskProgress.total > 0 && (
+        <div className={styles.subtasks}>
+          <ProgressBar done={task.subtaskProgress.done} total={task.subtaskProgress.total} />
+          <AvatarStack people={task.subtaskAssignees} meId={currentUserId} />
+        </div>
+      )}
       <div className={styles.row}>
         <MoveSelect projectId={task.projectId} taskId={task.id} status={task.status} />
         {task.assignee ? (

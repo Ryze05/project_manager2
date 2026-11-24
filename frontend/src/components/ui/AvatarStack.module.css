@@ -1,0 +1,27 @@
+.stack {
+  display: inline-flex;
+  flex: none;
+}
+
+/* The ring is the card colour, so overlapping initials stay apart. */
+.item {
+  display: inline-flex;
+  margin-left: calc(-1 * var(--s2));
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.item:first-child {
+  margin-left: 0;
+}
+
+.more {
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  background: var(--sunken);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+}

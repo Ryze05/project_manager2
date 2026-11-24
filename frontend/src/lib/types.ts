@@ -42,6 +42,8 @@ export interface TaskView {
   creatorId: string;
   assignee: { id: string; name: string; email: string } | null;
   subtaskProgress: { done: number; total: number };
+  /** Distinct assignees of the subtasks, oldest subtask first. */
+  subtaskAssignees: { id: string; name: string }[];
   createdAt: string;
   updatedAt: string;
 }

@@ -147,3 +147,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Progress of the subtasks, with the initials of whoever has one. */
+.subtasks {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.subtasks > :first-child {
+  flex: 1;
+  min-width: 0;
+}
