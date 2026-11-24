@@ -1,6 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsEnum,
   IsNotEmpty,
@@ -56,4 +59,17 @@ export class CreateTaskDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string | null;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Ids de etiquetas del proyecto (solo las tareas llevan etiquetas, no las subtareas)',
+  })
+  // Not IsOptional: that would also let `null` through, and the list is not nullable.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  labelIds?: string[];
 }

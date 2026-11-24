@@ -35,6 +35,7 @@ describe('TasksService', () => {
   const createdAt = new Date('2026-01-01');
   const include = {
     assignee: { select: { id: true, name: true, email: true } },
+    labels: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
     subtasks: {
       select: {
         status: true,
@@ -57,6 +58,7 @@ describe('TasksService', () => {
     creatorId: 'u1',
     assigneeId: null,
     assignee: null,
+    labels: [],
     subtasks: [],
     createdAt,
     updatedAt: createdAt,
@@ -76,6 +78,7 @@ describe('TasksService', () => {
     creatorId: 'u1',
     assignee: null,
     subtaskProgress: { done: 0, total: 0 },
+    labels: [],
     subtaskAssignees: [],
     createdAt,
     updatedAt: createdAt,
@@ -190,7 +193,7 @@ describe('TasksService', () => {
       await service.board('p1', 'u1');
 
       expect(findMany).toHaveBeenCalledWith({
-        where: { projectId: 'p1', parentId: null },
+        where: { projectId: 'p1', parentId: null, AND: [] },
         include,
         orderBy: [
           { priority: 'desc' },

@@ -1,9 +1,13 @@
 import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
@@ -21,7 +25,7 @@ import { CreateTaskDto } from './create-task.dto.js';
  * `@ValidateIf(value !== undefined)`: omitted means "leave as is", null is a 400.
  */
 export class UpdateTaskDto extends PartialType(
-  OmitType(CreateTaskDto, ['title', 'priority'] as const),
+  OmitType(CreateTaskDto, ['title', 'priority', 'labelIds'] as const),
 ) {
   @ApiPropertyOptional({ example: 'Nuevo título' })
   @Transform(({ value }: { value: unknown }) =>
@@ -42,4 +46,16 @@ export class UpdateTaskDto extends PartialType(
   @ValidateIf((_, value) => value !== undefined)
   @IsEnum(TaskStatus)
   status?: TaskStatus;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Reemplaza las etiquetas de la tarea (lista vacia = ninguna); omitido = sin cambios',
+  })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  labelIds?: string[];
 }

@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
@@ -17,6 +18,7 @@ import {
 } from '../auth/decorators/current-user.decorator.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
+import { BoardQueryDto } from './dto/board-query.dto.js';
 import { TasksService, type Board, type TaskView } from './tasks.service.js';
 
 @ApiTags('tasks')
@@ -31,9 +33,10 @@ export class TasksController {
   })
   board(
     @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Query() filters: BoardQueryDto,
     @CurrentUser() user: AuthUser,
   ): Promise<Board> {
-    return this.tasks.board(projectId, user.id);
+    return this.tasks.board(projectId, user.id, filters);
   }
 
   @Post('tasks')

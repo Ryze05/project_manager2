@@ -14,6 +14,7 @@ import {
 import { MembersService } from '../members/members.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTaskDto } from './dto/create-task.dto.js';
+import type { BoardQueryDto } from './dto/board-query.dto.js';
 import type { UpdateTaskDto } from './dto/update-task.dto.js';
 
 export interface TaskView {
@@ -30,6 +31,7 @@ export interface TaskView {
   assignee: { id: string; name: string; email: string } | null;
   /** Computed from the subtasks' states, never stored. */
   subtaskProgress: { done: number; total: number };
+  labels: { id: string; name: string }[];
   /** Distinct assignees of the subtasks (oldest subtask first), for the board cards. */
   subtaskAssignees: { id: string; name: string }[];
   createdAt: Date;
@@ -40,6 +42,7 @@ export type Board = Record<TaskStatus, TaskView[]>;
 
 export const taskInclude = {
   assignee: { select: { id: true, name: true, email: true } },
+  labels: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
   subtasks: {
     select: {
       status: true,
@@ -67,6 +70,7 @@ export function toView(task: TaskRow): TaskView {
       done: task.subtasks.filter((s) => s.status === 'DONE').length,
       total: task.subtasks.length,
     },
+    labels: task.labels,
     subtaskAssignees: distinctAssignees(task.subtasks),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
@@ -105,6 +109,52 @@ function fieldsOf(dto: CreateTaskDto | UpdateTaskDto): Partial<CreateFields> {
   };
 }
 
+const connect = (ids: string[]) => ({ connect: ids.map((id) => ({ id })) });
+
+/**
+ * The conditions of the board filters. Different filters are ANDed; several
+ * labels (or priorities) are ORed. Filtering by person also keeps the tasks
+ * where one of their subtasks is theirs ("where do I have work pending?").
+ */
+function boardFilters(filters: BoardQueryDto): Prisma.TaskWhereInput[] {
+  const conditions: Prisma.TaskWhereInput[] = [];
+  if (filters.label?.length) {
+    conditions.push({ labels: { some: { id: { in: filters.label } } } });
+  }
+  if (filters.assignee === 'none') {
+    conditions.push({ assigneeId: null });
+  } else if (filters.assignee) {
+    conditions.push({
+      OR: [
+        { assigneeId: filters.assignee },
+        { subtasks: { some: { assigneeId: filters.assignee } } },
+      ],
+    });
+  }
+  if (filters.priority?.length) {
+    conditions.push({ priority: { in: filters.priority } });
+  }
+  if (filters.due) {
+    // Due dates are stored at UTC midnight, so compare against UTC days.
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const afterWeek = new Date(today.getTime() + 8 * 24 * 60 * 60 * 1000);
+    if (filters.due === 'overdue') {
+      conditions.push({
+        dueDate: { lt: today },
+        status: { not: TaskStatus.DONE },
+      });
+    } else if (filters.due === 'week') {
+      conditions.push({ dueDate: { gte: today, lt: afterWeek } });
+    } else {
+      conditions.push({ dueDate: null });
+    }
+  }
+  return conditions;
+}
+
 /** undefined = leave as is, null = clear, string = set. */
 function toDate(value: string | null | undefined): Date | null | undefined {
   return value === undefined || value === null ? value : new Date(value);
@@ -124,9 +174,15 @@ export class TasksService {
   ): Promise<TaskView> {
     await this.members.requireMember(projectId, userId);
     await this.assertAssignable(projectId, dto.assigneeId);
+    await this.assertLabels(projectId, dto.labelIds);
 
     const task = await this.prisma.task.create({
-      data: { ...fieldsOf(dto), projectId, creatorId: userId },
+      data: {
+        ...fieldsOf(dto),
+        ...(dto.labelIds?.length && { labels: connect(dto.labelIds) }),
+        projectId,
+        creatorId: userId,
+      },
       include: taskInclude,
     });
     return toView(task);
@@ -150,6 +206,9 @@ export class TasksService {
       throw new BadRequestException('Una subtarea no puede tener subtareas');
     }
     await this.assertAssignable(projectId, dto.assigneeId);
+    if (dto.labelIds?.length) {
+      throw new BadRequestException('Las subtareas no llevan etiquetas');
+    }
 
     const subtask = await this.prisma.$transaction(async (tx) => {
       if (parent.status === TaskStatus.DONE) {
@@ -193,11 +252,15 @@ export class TasksService {
    * Each column: highest priority first, then earliest due date (none last),
    * then oldest first.
    */
-  async board(projectId: string, userId: string): Promise<Board> {
+  async board(
+    projectId: string,
+    userId: string,
+    filters: BoardQueryDto = {},
+  ): Promise<Board> {
     await this.members.requireMember(projectId, userId);
 
     const tasks = await this.prisma.task.findMany({
-      where: { projectId, parentId: null },
+      where: { projectId, parentId: null, AND: boardFilters(filters) },
       include: taskInclude,
       orderBy: [
         { priority: 'desc' },
@@ -232,6 +295,12 @@ export class TasksService {
     await this.members.requireMember(projectId, userId);
     const existing = await this.getTask(projectId, taskId);
     await this.assertAssignable(projectId, dto.assigneeId);
+    if (dto.labelIds !== undefined) {
+      if (existing.parentId !== null && dto.labelIds.length > 0) {
+        throw new BadRequestException('Las subtareas no llevan etiquetas');
+      }
+      await this.assertLabels(projectId, dto.labelIds);
+    }
 
     // A task cannot be completed while any of its subtasks is pending.
     if (
@@ -255,7 +324,14 @@ export class TasksService {
       }
       return tx.task.update({
         where: { id: taskId },
-        data: { ...fieldsOf(dto), status: dto.status },
+        data: {
+          ...fieldsOf(dto),
+          status: dto.status,
+          // The list replaces the labels; omitted leaves them alone.
+          ...(dto.labelIds !== undefined && {
+            labels: { set: dto.labelIds.map((id) => ({ id })) },
+          }),
+        },
         include: taskInclude,
       });
     });
@@ -314,6 +390,23 @@ export class TasksService {
       select: { id: true, status: true },
     });
     return parent?.status === TaskStatus.DONE ? parent.id : null;
+  }
+
+  /** Every label id must exist in this project (a label of another project is just as invalid). */
+  private async assertLabels(
+    projectId: string,
+    labelIds: string[] | undefined,
+  ): Promise<void> {
+    if (!labelIds?.length) return;
+    const unique = new Set(labelIds);
+    const found = await this.prisma.label.count({
+      where: { projectId, id: { in: [...unique] } },
+    });
+    if (found !== unique.size) {
+      throw new BadRequestException(
+        'Alguna etiqueta no existe en este proyecto',
+      );
+    }
   }
 
   /** null/undefined mean "no assignee"; anything else must be a project member. */

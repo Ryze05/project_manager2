@@ -46,6 +46,7 @@ model Project {
 
   members ProjectMember[]
   tasks   Task[]
+  labels  Label[]
 }
 
 model ProjectMember {
@@ -82,6 +83,8 @@ model Task {
   parent   Task?     @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
   subtasks Task[]    @relation("Subtasks")
   comments Comment[]
+  // Solo las tareas llevan etiquetas, no las subtareas (validado en el servicio).
+  labels   Label[]
 
   @@index([projectId, status])
   @@index([assigneeId, dueDate])
@@ -101,4 +104,21 @@ model Comment {
   author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
   @@index([taskId, createdAt])
+}
+
+// Etiquetas de un proyecto, sin color propio (el sistema de diseno solo tiene un acento).
+// El nombre es unico dentro del proyecto; el servicio ademas lo compara sin distinguir mayusculas.
+// La relacion con Task es muchos a muchos implicita: al borrar la etiqueta o la tarea
+// desaparece solo la fila de union.
+model Label {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+
+  projectId String @db.Uuid
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@unique([projectId, name])
 }
