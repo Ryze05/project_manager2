@@ -45,7 +45,14 @@ export async function api<T = unknown>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
+  // Ids reach us from the client (Server Actions) and from the URL. A "../" or an
+  // encoded slash would make `fetch` land on a different API route with the user's token.
+  if (/(^|\/)\.\.?(\/|$)|\\|%2e|%2f|%5c/i.test(path.split("?")[0])) {
+    return { ok: false, status: 400, message: "Ruta no válida" };
+  }
+
   let response: Response;
+  let text: string;
   try {
     response = await fetch(`${baseUrl()}${path}`, {
       method,
@@ -53,6 +60,7 @@ export async function api<T = unknown>(
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
     });
+    text = await response.text();
   } catch {
     return {
       ok: false,
@@ -61,8 +69,15 @@ export async function api<T = unknown>(
     };
   }
 
-  const text = await response.text();
-  const payload: unknown = text ? JSON.parse(text) : null;
+  // A proxy or gateway may answer with HTML or plain text instead of JSON.
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+  }
   if (!response.ok) {
     return {
       ok: false,

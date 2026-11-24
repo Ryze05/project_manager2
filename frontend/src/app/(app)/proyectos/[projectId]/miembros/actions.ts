@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { api } from "@/lib/api";
+import type { ActionResult } from "@/lib/types";
 
 export interface AddMemberState {
   error?: string;
@@ -34,15 +35,20 @@ export async function addMemberAction(
     return { error: result.message, email };
   }
 
-  revalidatePath(`/proyectos/${projectId}/miembros`);
+  // Member counts show in the project list and header; tasks are unassigned on removal.
+  revalidatePath("/", "layout");
   return { added: Date.now() };
 }
 
-export async function removeMemberAction(projectId: string, userId: string): Promise<void> {
+export async function removeMemberAction(
+  projectId: string,
+  userId: string,
+): Promise<ActionResult> {
   const result = await api(`/projects/${projectId}/members/${userId}`, { method: "DELETE" });
   if (!result.ok) {
     if (result.status === 401) redirect("/sesion-caducada");
-    throw new Error(result.message);
+    return { error: result.message };
   }
-  revalidatePath(`/proyectos/${projectId}/miembros`);
+  revalidatePath("/", "layout");
+  return {};
 }

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { api } from "@/lib/api";
 import { taskSchema } from "@/lib/task-schemas";
-import type { TaskStatus, TaskView } from "@/lib/types";
+import type { ActionResult, TaskStatus, TaskView } from "@/lib/types";
 
 export interface TaskFormState {
   errors?: { title?: string; description?: string };
@@ -58,7 +58,8 @@ export async function createTaskAction(
     return { message: result.message, values };
   }
 
-  revalidatePath(`/proyectos/${projectId}`);
+  // Tasks assigned to the user also feed the sidebar counter (in the layout).
+  revalidatePath("/", "layout");
   redirect(`/proyectos/${projectId}`);
 }
 
@@ -67,7 +68,11 @@ export async function moveTaskAction(
   projectId: string,
   taskId: string,
   status: TaskStatus,
-): Promise<{ error?: string }> {
+): Promise<ActionResult> {
+  // Called from client components: do not trust the argument's type.
+  if (!["TODO", "IN_PROGRESS", "DONE"].includes(status)) {
+    return { error: "Estado no válido" };
+  }
   const result = await api(`/projects/${projectId}/tasks/${taskId}`, {
     method: "PATCH",
     body: { status },
@@ -125,7 +130,7 @@ export async function updateTaskAction(
     return { message: result.message, values };
   }
 
-  revalidatePath(`/proyectos/${projectId}`, "layout");
+  revalidatePath("/", "layout");
   redirect(`/proyectos/${projectId}/tareas/${taskId}`);
 }
 
@@ -134,13 +139,13 @@ export async function deleteTaskAction(
   projectId: string,
   taskId: string,
   parentId: string | null,
-): Promise<void> {
+): Promise<ActionResult> {
   const result = await api(`/projects/${projectId}/tasks/${taskId}`, { method: "DELETE" });
   if (!result.ok) {
     if (result.status === 401) redirect("/sesion-caducada");
-    throw new Error(result.message);
+    return { error: result.message };
   }
-  revalidatePath(`/proyectos/${projectId}`, "layout");
+  revalidatePath("/", "layout");
   redirect(parentId ? `/proyectos/${projectId}/tareas/${parentId}` : `/proyectos/${projectId}`);
 }
 
@@ -170,6 +175,6 @@ export async function createSubtaskAction(
     return { error: result.message, title };
   }
   // Creating a subtask under a done parent reopens it, so refresh the board too.
-  revalidatePath(`/proyectos/${projectId}`, "layout");
+  revalidatePath("/", "layout");
   return { added: Date.now() };
 }

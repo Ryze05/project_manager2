@@ -9,7 +9,7 @@
 }
 
 .dialog::backdrop {
-  background: rgb(30 26 43 / 25%);
+  background: var(--scrim);
 }
 
 .text {
@@ -23,4 +23,13 @@
   gap: var(--s2);
   justify-content: flex-end;
   align-items: center;
+}
+
+.error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--r-md);
+  padding: var(--s2) var(--s3);
+  font-size: var(--fs-md);
+  margin-bottom: var(--s4);
 }

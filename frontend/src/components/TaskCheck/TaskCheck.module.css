@@ -2,7 +2,7 @@
   width: 18px;
   height: 18px;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   border: 1.5px solid var(--line-strong);
   background: transparent;
   flex: none;
@@ -28,4 +28,37 @@
 
 .check:disabled {
   opacity: 0.5;
+}
+
+.wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+/* A small notice under the box; it floats so it does not push the row around. */
+.error {
+  position: absolute;
+  top: calc(100% + var(--s1));
+  left: 0;
+  z-index: 2;
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  width: max-content;
+  max-width: 260px;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  box-shadow: var(--shadow);
+}
+
+.dismiss {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  line-height: 1;
 }

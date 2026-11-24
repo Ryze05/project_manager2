@@ -17,6 +17,7 @@
   --on-accent: #ffffff;
   --danger: #a8453a; /* only overdue, high priority and errors */
   --danger-soft: #f6e4e1;
+  --scrim: rgb(30 26 43 / 25%); /* backdrop of modal dialogs */
 
   /* Space: 4 px scale. */
   --s1: 4px;

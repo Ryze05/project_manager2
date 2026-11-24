@@ -124,7 +124,7 @@
 }
 
 /* Above the stretched link, so the check box works without opening the task. */
-.row > button {
+.row > span:first-child {
   position: relative;
   z-index: 1;
 }

@@ -64,3 +64,8 @@ export interface MyTaskView extends TaskView {
   project: { id: string; name: string };
   parent: { id: string; title: string } | null;
 }
+
+/** What a Server Action returns when it can fail without leaving the page. */
+export interface ActionResult {
+  error?: string;
+}

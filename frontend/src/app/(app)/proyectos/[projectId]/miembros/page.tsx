@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Avatar, Badge, Button, Card } from "@/components/ui";
+import { Avatar, Badge, Card } from "@/components/ui";
 import { api, unwrap } from "@/lib/api";
 import type { CurrentUser, MemberView, ProjectView } from "@/lib/types";
 import styles from "../../projects.module.css";
-import { removeMemberAction } from "./actions";
 import { AddMemberForm } from "./AddMemberForm";
+import { RemoveMember } from "./RemoveMember";
 
 export const metadata = { title: "Miembros · Gestor de proyectos" };
 
@@ -55,11 +55,7 @@ export default async function MembersPage({
                   {member.role === "OWNER" ? "Propietario" : "Miembro"}
                 </Badge>
                 {isOwner && member.role !== "OWNER" && (
-                  <form action={removeMemberAction.bind(null, projectId, member.id)}>
-                    <Button type="submit" variant="danger">
-                      Quitar
-                    </Button>
-                  </form>
+                  <RemoveMember projectId={projectId} userId={member.id} name={member.name} />
                 )}
               </li>
             ))}

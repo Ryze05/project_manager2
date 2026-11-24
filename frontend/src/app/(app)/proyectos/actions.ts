@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { api } from "@/lib/api";
 import { projectSchema } from "@/lib/project-schemas";
-import type { ProjectView } from "@/lib/types";
+import type { ActionResult, ProjectView } from "@/lib/types";
 
 export interface ProjectFormState {
   errors?: { name?: string; description?: string };
@@ -56,6 +56,8 @@ export async function createProjectAction(
     return { message: result.message, values: form.values };
   }
 
+  // The new project must show up in the sidebar (it lives in the layout).
+  revalidatePath("/", "layout");
   redirect(`/proyectos/${result.data.id}`);
 }
 
@@ -82,11 +84,11 @@ export async function updateProjectAction(
   redirect(`/proyectos/${projectId}`);
 }
 
-export async function deleteProjectAction(projectId: string): Promise<void> {
+export async function deleteProjectAction(projectId: string): Promise<ActionResult> {
   const result = await api(`/projects/${projectId}`, { method: "DELETE" });
   if (!result.ok) {
     if (result.status === 401) redirect("/sesion-caducada");
-    throw new Error(result.message);
+    return { error: result.message };
   }
   revalidatePath("/", "layout");
   redirect("/proyectos");
