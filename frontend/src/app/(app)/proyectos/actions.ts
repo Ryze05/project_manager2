@@ -2,8 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { api } from "@/lib/api";
+import { callApi, fieldErrors, formText } from "@/lib/actions";
 import { projectSchema } from "@/lib/project-schemas";
 import type { ActionResult, ProjectView } from "@/lib/types";
 
@@ -14,23 +13,17 @@ export interface ProjectFormState {
   values?: { name?: string; description?: string };
 }
 
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
-
 /** Reads and validates the shared form; returns the state to show if it fails. */
 function readForm(formData: FormData) {
   const values = {
-    name: text(formData, "name"),
-    description: text(formData, "description"),
+    name: formText(formData, "name"),
+    description: formText(formData, "description"),
   };
   const parsed = projectSchema.safeParse(values);
   if (parsed.success) return { data: parsed.data, values };
-  const flat = z.flattenError(parsed.error).fieldErrors as Record<string, string[]>;
   return {
     failure: {
-      errors: { name: flat.name?.[0], description: flat.description?.[0] },
+      errors: fieldErrors(parsed.error, ["name", "description"]),
       values,
     } satisfies ProjectFormState,
   };
@@ -43,7 +36,7 @@ export async function createProjectAction(
   const form = readForm(formData);
   if (form.failure) return form.failure;
 
-  const result = await api<ProjectView>("/projects", {
+  const result = await callApi<ProjectView>("/projects", {
     method: "POST",
     body: {
       name: form.data.name,
@@ -52,7 +45,6 @@ export async function createProjectAction(
     },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { message: result.message, values: form.values };
   }
 
@@ -69,13 +61,12 @@ export async function updateProjectAction(
   const form = readForm(formData);
   if (form.failure) return form.failure;
 
-  const result = await api<ProjectView>(`/projects/${projectId}`, {
+  const result = await callApi<ProjectView>(`/projects/${projectId}`, {
     method: "PATCH",
     // `null` clears the description (the API accepts it; omitted would keep it).
     body: { name: form.data.name, description: form.data.description || null },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { message: result.message, values: form.values };
   }
 
@@ -85,9 +76,8 @@ export async function updateProjectAction(
 }
 
 export async function deleteProjectAction(projectId: string): Promise<ActionResult> {
-  const result = await api(`/projects/${projectId}`, { method: "DELETE" });
+  const result = await callApi(`/projects/${projectId}`, { method: "DELETE" });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message };
   }
   revalidatePath("/", "layout");

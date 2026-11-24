@@ -1,8 +1,7 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { api } from "@/lib/api";
+import { callApi, formText } from "@/lib/actions";
 import type { ActionResult } from "@/lib/types";
 
 export interface CommentFormState {
@@ -12,8 +11,7 @@ export interface CommentFormState {
 }
 
 function content(formData: FormData): string {
-  const value = formData.get("content");
-  return typeof value === "string" ? value.trim() : "";
+  return formText(formData, "content").trim();
 }
 
 function check(text: string): string | undefined {
@@ -36,12 +34,11 @@ export async function createCommentAction(
   const error = check(text);
   if (error) return { error, content: text };
 
-  const result = await api(base(projectId, taskId), {
+  const result = await callApi(base(projectId, taskId), {
     method: "POST",
     body: { content: text },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message, content: text };
   }
   revalidatePath(page(projectId, taskId));
@@ -58,12 +55,11 @@ export async function updateCommentAction(
   const error = check(text);
   if (error) return { error };
 
-  const result = await api(`${base(projectId, taskId)}/${commentId}`, {
+  const result = await callApi(`${base(projectId, taskId)}/${commentId}`, {
     method: "PATCH",
     body: { content: text },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message };
   }
   revalidatePath(page(projectId, taskId));
@@ -75,9 +71,8 @@ export async function deleteCommentAction(
   taskId: string,
   commentId: string,
 ): Promise<ActionResult> {
-  const result = await api(`${base(projectId, taskId)}/${commentId}`, { method: "DELETE" });
+  const result = await callApi(`${base(projectId, taskId)}/${commentId}`, { method: "DELETE" });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message };
   }
   revalidatePath(page(projectId, taskId));  return {};

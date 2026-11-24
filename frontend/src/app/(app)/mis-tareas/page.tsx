@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { TaskCheck } from "@/components/TaskCheck/TaskCheck";
 import { Avatar, Badge, Card, Segmented, SwitchLink } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
+import { getMyTasks } from "@/lib/queries";
 import { dueBucket, formatDueDate, type DueBucket } from "@/lib/format";
 import type { MyTaskView } from "@/lib/types";
 import styles from "./mine.module.css";
@@ -29,9 +29,7 @@ export default async function MyTasksPage({
   const byProject = query.agrupar === "proyecto";
   const showDone = query.hechas === "1";
 
-  const tasks = await unwrap(
-    await api<MyTaskView[]>(`/me/tasks?includeDone=${showDone}`),
-  );
+  const tasks = await getMyTasks(showDone);
 
   /** Link to this page with some of the options changed. */
   const href = (changes: { byProject?: boolean; showDone?: boolean }) => {

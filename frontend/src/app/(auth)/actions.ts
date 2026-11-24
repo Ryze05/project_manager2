@@ -1,10 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { fieldErrors, formText } from "@/lib/actions";
 import { api } from "@/lib/api";
 import { loginSchema, registerSchema } from "@/lib/auth-schemas";
 import { clearToken, setToken } from "@/lib/session";
-import { z } from "zod";
 
 export interface AuthState {
   /** Per-field messages from zod. */
@@ -19,33 +19,19 @@ interface AuthResponse {
   accessToken: string;
 }
 
-function fieldErrors(error: z.ZodError): NonNullable<AuthState["errors"]> {
-  const flat = z.flattenError(error).fieldErrors as Record<string, string[]>;
-  return {
-    name: flat.name?.[0],
-    email: flat.email?.[0],
-    password: flat.password?.[0],
-  };
-}
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
-
 export async function registerAction(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
   const input = {
-    name: text(formData, "name"),
-    email: text(formData, "email"),
-    password: text(formData, "password"),
+    name: formText(formData, "name"),
+    email: formText(formData, "email"),
+    password: formText(formData, "password"),
   };
   const values = { name: input.name, email: input.email };
 
   const parsed = registerSchema.safeParse(input);
-  if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
+  if (!parsed.success) return { errors: fieldErrors(parsed.error, ["name", "email", "password"]), values };
 
   const result = await api<AuthResponse>("/auth/register", {
     method: "POST",
@@ -63,13 +49,13 @@ export async function loginAction(
   formData: FormData,
 ): Promise<AuthState> {
   const input = {
-    email: text(formData, "email"),
-    password: text(formData, "password"),
+    email: formText(formData, "email"),
+    password: formText(formData, "password"),
   };
   const values = { email: input.email };
 
   const parsed = loginSchema.safeParse(input);
-  if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
+  if (!parsed.success) return { errors: fieldErrors(parsed.error, ["name", "email", "password"]), values };
 
   const result = await api<AuthResponse>("/auth/login", {
     method: "POST",

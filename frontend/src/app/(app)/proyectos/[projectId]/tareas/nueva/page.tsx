@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
-import type { MemberView, ProjectView } from "@/lib/types";
+import { getMembers, getProject } from "@/lib/queries";
 import styles from "../../../projects.module.css";
 import { createTaskAction } from "../../actions";
 import { TaskForm } from "../TaskForm";
@@ -13,8 +12,8 @@ export default async function NewTaskPage({
 }: PageProps<"/proyectos/[projectId]/tareas/nueva">) {
   const { projectId } = await params;
   const [project, members] = await Promise.all([
-    api<ProjectView>(`/projects/${projectId}`).then(unwrap),
-    api<MemberView[]>(`/projects/${projectId}/members`).then(unwrap),
+    getProject(projectId),
+    getMembers(projectId),
   ]);
 
   return (

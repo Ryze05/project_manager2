@@ -2,8 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
 import { Card } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
-import type { ProjectView } from "@/lib/types";
+import { getProject } from "@/lib/queries";
 import { deleteProjectAction, updateProjectAction } from "../../actions";
 import { ProjectForm } from "../../ProjectForm";
 import styles from "../../projects.module.css";
@@ -14,7 +13,7 @@ export default async function EditProjectPage({
   params,
 }: PageProps<"/proyectos/[projectId]/editar">) {
   const { projectId } = await params;
-  const project = await unwrap(await api<ProjectView>(`/projects/${projectId}`));
+  const project = await getProject(projectId);
   // Only the owner edits or deletes (the API enforces it too).
   if (project.role !== "OWNER") redirect(`/proyectos/${projectId}`);
 

@@ -2,8 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { api } from "@/lib/api";
+import { callApi, fieldErrors, formText } from "@/lib/actions";
 import { taskSchema } from "@/lib/task-schemas";
 import type { ActionResult, TaskStatus, TaskView } from "@/lib/types";
 
@@ -14,35 +13,29 @@ export interface TaskFormState {
   values?: Record<"title" | "description" | "priority" | "dueDate" | "assigneeId", string>;
 }
 
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
-
 export async function createTaskAction(
   projectId: string,
   _prev: TaskFormState,
   formData: FormData,
 ): Promise<TaskFormState> {
   const values = {
-    title: text(formData, "title"),
-    description: text(formData, "description"),
-    priority: text(formData, "priority") || "MEDIUM",
-    dueDate: text(formData, "dueDate"),
-    assigneeId: text(formData, "assigneeId"),
+    title: formText(formData, "title"),
+    description: formText(formData, "description"),
+    priority: formText(formData, "priority") || "MEDIUM",
+    dueDate: formText(formData, "dueDate"),
+    assigneeId: formText(formData, "assigneeId"),
   };
 
   const parsed = taskSchema.safeParse(values);
   if (!parsed.success) {
-    const flat = z.flattenError(parsed.error).fieldErrors as Record<string, string[]>;
     return {
-      errors: { title: flat.title?.[0], description: flat.description?.[0] },
+      errors: fieldErrors(parsed.error, ["title", "description"]),
       values,
     };
   }
 
   const { title, description, priority, dueDate, assigneeId } = parsed.data;
-  const result = await api<TaskView>(`/projects/${projectId}/tasks`, {
+  const result = await callApi<TaskView>(`/projects/${projectId}/tasks`, {
     method: "POST",
     body: {
       title,
@@ -54,7 +47,6 @@ export async function createTaskAction(
     },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { message: result.message, values };
   }
 
@@ -73,12 +65,11 @@ export async function moveTaskAction(
   if (!["TODO", "IN_PROGRESS", "DONE"].includes(status)) {
     return { error: "Estado no válido" };
   }
-  const result = await api(`/projects/${projectId}/tasks/${taskId}`, {
+  const result = await callApi(`/projects/${projectId}/tasks/${taskId}`, {
     method: "PATCH",
     body: { status },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     // E.g. 409: the task still has pending subtasks.
     return { error: result.message };
   }
@@ -89,11 +80,11 @@ export async function moveTaskAction(
 
 function taskInput(formData: FormData) {
   return {
-    title: text(formData, "title"),
-    description: text(formData, "description"),
-    priority: text(formData, "priority") || "MEDIUM",
-    dueDate: text(formData, "dueDate"),
-    assigneeId: text(formData, "assigneeId"),
+    title: formText(formData, "title"),
+    description: formText(formData, "description"),
+    priority: formText(formData, "priority") || "MEDIUM",
+    dueDate: formText(formData, "dueDate"),
+    assigneeId: formText(formData, "assigneeId"),
   };
 }
 
@@ -106,15 +97,14 @@ export async function updateTaskAction(
   const values = taskInput(formData);
   const parsed = taskSchema.safeParse(values);
   if (!parsed.success) {
-    const flat = z.flattenError(parsed.error).fieldErrors as Record<string, string[]>;
     return {
-      errors: { title: flat.title?.[0], description: flat.description?.[0] },
+      errors: fieldErrors(parsed.error, ["title", "description"]),
       values,
     };
   }
 
   const { title, description, priority, dueDate, assigneeId } = parsed.data;
-  const result = await api<TaskView>(`/projects/${projectId}/tasks/${taskId}`, {
+  const result = await callApi<TaskView>(`/projects/${projectId}/tasks/${taskId}`, {
     method: "PATCH",
     body: {
       title,
@@ -126,7 +116,6 @@ export async function updateTaskAction(
     },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { message: result.message, values };
   }
 
@@ -140,9 +129,8 @@ export async function deleteTaskAction(
   taskId: string,
   parentId: string | null,
 ): Promise<ActionResult> {
-  const result = await api(`/projects/${projectId}/tasks/${taskId}`, { method: "DELETE" });
+  const result = await callApi(`/projects/${projectId}/tasks/${taskId}`, { method: "DELETE" });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message };
   }
   revalidatePath("/", "layout");
@@ -162,16 +150,15 @@ export async function createSubtaskAction(
   _prev: SubtaskFormState,
   formData: FormData,
 ): Promise<SubtaskFormState> {
-  const title = text(formData, "title").trim();
+  const title = formText(formData, "title").trim();
   if (!title) return { error: "Escribe un título", title };
   if (title.length > 200) return { error: "Máximo 200 caracteres", title };
 
-  const result = await api(`/projects/${projectId}/tasks/${parentId}/subtasks`, {
+  const result = await callApi(`/projects/${projectId}/tasks/${parentId}/subtasks`, {
     method: "POST",
     body: { title },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message, title };
   }
   // Creating a subtask under a done parent reopens it, so refresh the board too.

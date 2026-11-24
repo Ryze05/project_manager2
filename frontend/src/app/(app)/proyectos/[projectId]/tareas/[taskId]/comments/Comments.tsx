@@ -1,5 +1,4 @@
 import { Card } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import type { CommentView } from "@/lib/types";
 import { CommentForm } from "./CommentForm";
@@ -7,21 +6,19 @@ import { CommentItem } from "./CommentItem";
 import styles from "./comments.module.css";
 
 /** Comment thread of a task or subtask, oldest first, with the box to write a new one. */
-export async function Comments({
+export function Comments({
+  comments,
   projectId,
   taskId,
   currentUserId,
   isOwner,
 }: {
+  comments: CommentView[];
   projectId: string;
   taskId: string;
   currentUserId: string;
   isOwner: boolean;
 }) {
-  const comments = await unwrap(
-    await api<CommentView[]>(`/projects/${projectId}/tasks/${taskId}/comments`),
-  );
-
   return (
     <Card>
       <div className={styles.label}>

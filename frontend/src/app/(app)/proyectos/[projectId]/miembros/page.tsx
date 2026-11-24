@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Avatar, Badge, Card } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
-import type { CurrentUser, MemberView, ProjectView } from "@/lib/types";
+import { getMe, getMembers, getProject } from "@/lib/queries";
 import styles from "../../projects.module.css";
 import { AddMemberForm } from "./AddMemberForm";
 import { RemoveMember } from "./RemoveMember";
@@ -13,9 +12,9 @@ export default async function MembersPage({
 }: PageProps<"/proyectos/[projectId]/miembros">) {
   const { projectId } = await params;
   const [project, members, me] = await Promise.all([
-    api<ProjectView>(`/projects/${projectId}`).then(unwrap),
-    api<MemberView[]>(`/projects/${projectId}/members`).then(unwrap),
-    api<CurrentUser>("/auth/me").then(unwrap),
+    getProject(projectId),
+    getMembers(projectId),
+    getMe(),
   ]);
   const isOwner = project.role === "OWNER";
 

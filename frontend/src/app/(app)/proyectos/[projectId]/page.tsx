@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge, ButtonLink } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
-import type { Board, CurrentUser, ProjectView, TaskStatus } from "@/lib/types";
+import { getBoard, getMe, getProject } from "@/lib/queries";
+import type { TaskStatus } from "@/lib/types";
 import styles from "../projects.module.css";
 import boardStyles from "./board.module.css";
 import { TaskCard } from "./TaskCard";
@@ -17,9 +17,9 @@ export default async function ProjectPage({
 }: PageProps<"/proyectos/[projectId]">) {
   const { projectId } = await params;
   const [project, board, me] = await Promise.all([
-    api<ProjectView>(`/projects/${projectId}`).then(unwrap),
-    api<Board>(`/projects/${projectId}/board`).then(unwrap),
-    api<CurrentUser>("/auth/me").then(unwrap),
+    getProject(projectId),
+    getBoard(projectId),
+    getMe(),
   ]);
   const isOwner = project.role === "OWNER";
 

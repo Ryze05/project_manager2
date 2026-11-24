@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { Avatar, Badge, ButtonLink, Card } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
-import type { ProjectView } from "@/lib/types";
+import { getProjects } from "@/lib/queries";
 import styles from "./projects.module.css";
 
 export const metadata = { title: "Proyectos · Gestor de proyectos" };
 
 export default async function ProjectsPage() {
-  const projects = await unwrap(await api<ProjectView[]>("/projects"));
+  const projects = await getProjects();
 
   return (
     <div className={styles.page}>

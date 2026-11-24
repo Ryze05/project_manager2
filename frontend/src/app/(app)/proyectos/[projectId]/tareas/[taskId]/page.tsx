@@ -3,9 +3,8 @@ import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { TaskCheck } from "@/components/TaskCheck/TaskCheck";
 import { Avatar, ButtonLink, Card, ProgressBar } from "@/components/ui";
-import { api, unwrap } from "@/lib/api";
 import { formatDueDate, isOverdue } from "@/lib/format";
-import type { CurrentUser, ProjectView, TaskView } from "@/lib/types";
+import { getComments, getMe, getProject, getSubtasks, getTask } from "@/lib/queries";
 import projectStyles from "../../../projects.module.css";
 import { deleteTaskAction } from "../../actions";
 import { AddSubtaskForm } from "./AddSubtaskForm";
@@ -18,17 +17,17 @@ export default async function TaskPage({
   params,
 }: PageProps<"/proyectos/[projectId]/tareas/[taskId]">) {
   const { projectId, taskId } = await params;
-  const base = `/projects/${projectId}`;
-  const [project, task, me] = await Promise.all([
-    api<ProjectView>(base).then(unwrap),
-    api<TaskView>(`${base}/tasks/${taskId}`).then(unwrap),
-    api<CurrentUser>("/auth/me").then(unwrap),
+  // One round for everything that only needs the ids in the URL (the list of
+  // subtasks of a subtask is just empty). Only a subtask needs a second one, for its parent.
+  const [project, task, me, subtasks, comments] = await Promise.all([
+    getProject(projectId),
+    getTask(projectId, taskId),
+    getMe(),
+    getSubtasks(projectId, taskId),
+    getComments(projectId, taskId),
   ]);
   const isSubtask = task.parentId !== null;
-  const [parent, subtasks] = await Promise.all([
-    isSubtask ? api<TaskView>(`${base}/tasks/${task.parentId}`).then(unwrap) : null,
-    isSubtask ? [] : api<TaskView[]>(`${base}/tasks/${taskId}/subtasks`).then(unwrap),
-  ]);
+  const parent = task.parentId ? await getTask(projectId, task.parentId) : null;
 
   const canDelete = project.role === "OWNER" || task.creatorId === me.id;
   const late = task.status !== "DONE" && task.dueDate !== null && isOverdue(task.dueDate);
@@ -125,6 +124,7 @@ export default async function TaskPage({
         )}
 
         <Comments
+          comments={comments}
           projectId={projectId}
           taskId={taskId}
           currentUserId={me.id}

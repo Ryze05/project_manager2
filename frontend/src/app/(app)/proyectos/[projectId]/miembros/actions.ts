@@ -1,9 +1,8 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { api } from "@/lib/api";
+import { callApi, formText } from "@/lib/actions";
 import type { ActionResult } from "@/lib/types";
 
 export interface AddMemberState {
@@ -20,18 +19,16 @@ export async function addMemberAction(
   _prev: AddMemberState,
   formData: FormData,
 ): Promise<AddMemberState> {
-  const raw = formData.get("email");
-  const email = typeof raw === "string" ? raw.trim() : "";
+  const email = formText(formData, "email").trim();
 
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { error: parsed.error.issues[0].message, email };
 
-  const result = await api(`/projects/${projectId}/members`, {
+  const result = await callApi(`/projects/${projectId}/members`, {
     method: "POST",
     body: { email: parsed.data },
   });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message, email };
   }
 
@@ -44,9 +41,8 @@ export async function removeMemberAction(
   projectId: string,
   userId: string,
 ): Promise<ActionResult> {
-  const result = await api(`/projects/${projectId}/members/${userId}`, { method: "DELETE" });
+  const result = await callApi(`/projects/${projectId}/members/${userId}`, { method: "DELETE" });
   if (!result.ok) {
-    if (result.status === 401) redirect("/sesion-caducada");
     return { error: result.message };
   }
   revalidatePath("/", "layout");
