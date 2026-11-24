@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui";
+import { Badge, ButtonLink } from "@/components/ui";
 import { api, unwrap } from "@/lib/api";
 import type { ProjectView } from "@/lib/types";
 import styles from "../projects.module.css";
@@ -10,6 +10,7 @@ export default async function ProjectPage({
 }: PageProps<"/proyectos/[projectId]">) {
   const { projectId } = await params;
   const project = await unwrap(await api<ProjectView>(`/projects/${projectId}`));
+  const isOwner = project.role === "OWNER";
 
   return (
     <div className={styles.page}>
@@ -21,9 +22,19 @@ export default async function ProjectPage({
           <p className={styles.eyebrow}>{project.description ?? "Sin descripción"}</p>
           <h1>{project.name}</h1>
         </div>
-        <Badge tone={project.role === "OWNER" ? "accent" : "neutral"}>
-          {project.role === "OWNER" ? "Propietario" : "Miembro"}
-        </Badge>
+        <div className={styles.actions}>
+          <Badge tone={isOwner ? "accent" : "neutral"}>
+            {isOwner ? "Propietario" : "Miembro"}
+          </Badge>
+          <ButtonLink href={`/proyectos/${projectId}/miembros`} variant="ghost">
+            Miembros <span className={styles.count}>{project.memberCount}</span>
+          </ButtonLink>
+          {isOwner && (
+            <ButtonLink href={`/proyectos/${projectId}/editar`} variant="ghost">
+              Editar
+            </ButtonLink>
+          )}
+        </div>
       </header>
     </div>
   );

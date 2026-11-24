@@ -18,3 +18,10 @@ export interface CurrentUser {
   name: string;
   email: string;
 }
+
+export interface MemberView {
+  id: string;
+  name: string;
+  email: string;
+  role: ProjectRole;
+}

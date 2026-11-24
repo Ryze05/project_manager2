@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Avatar, Badge, Card } from "@/components/ui";
+import { Avatar, Badge, ButtonLink, Card } from "@/components/ui";
 import { api, unwrap } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import type { ProjectView } from "@/lib/types";
@@ -17,9 +17,7 @@ export default async function ProjectsPage() {
           <p className={styles.eyebrow}>Todos los proyectos en los que participas</p>
           <h1>Proyectos</h1>
         </div>
-        <Link href="/proyectos/nuevo" className={styles.cta}>
-          Nuevo proyecto
-        </Link>
+        <ButtonLink href="/proyectos/nuevo">Nuevo proyecto</ButtonLink>
       </header>
 
       {projects.length === 0 ? (

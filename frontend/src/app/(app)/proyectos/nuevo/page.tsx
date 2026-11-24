@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui";
+import { createProjectAction } from "../actions";
+import { ProjectForm } from "../ProjectForm";
 import styles from "../projects.module.css";
-import { NewProjectForm } from "./NewProjectForm";
 
 export const metadata = { title: "Nuevo proyecto · Gestor de proyectos" };
 
@@ -14,7 +15,12 @@ export default function NewProjectPage() {
         </div>
       </header>
       <Card>
-        <NewProjectForm />
+        <ProjectForm
+          action={createProjectAction}
+          submitLabel="Crear proyecto"
+          pendingLabel="Creando…"
+          cancelHref="/proyectos"
+        />
       </Card>
     </div>
   );
