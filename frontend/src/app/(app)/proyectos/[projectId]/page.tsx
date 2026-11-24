@@ -1,15 +1,26 @@
 import Link from "next/link";
 import { Badge, ButtonLink } from "@/components/ui";
 import { api, unwrap } from "@/lib/api";
-import type { ProjectView } from "@/lib/types";
+import type { Board, CurrentUser, ProjectView, TaskStatus } from "@/lib/types";
 import styles from "../projects.module.css";
+import boardStyles from "./board.module.css";
+import { TaskCard } from "./TaskCard";
 
-/** Temporary: header only. The board replaces the body in the next step. */
+const COLUMNS: { status: TaskStatus; label: string }[] = [
+  { status: "TODO", label: "Por hacer" },
+  { status: "IN_PROGRESS", label: "En curso" },
+  { status: "DONE", label: "Hecha" },
+];
+
 export default async function ProjectPage({
   params,
 }: PageProps<"/proyectos/[projectId]">) {
   const { projectId } = await params;
-  const project = await unwrap(await api<ProjectView>(`/projects/${projectId}`));
+  const [project, board, me] = await Promise.all([
+    api<ProjectView>(`/projects/${projectId}`).then(unwrap),
+    api<Board>(`/projects/${projectId}/board`).then(unwrap),
+    api<CurrentUser>("/auth/me").then(unwrap),
+  ]);
   const isOwner = project.role === "OWNER";
 
   return (
@@ -34,8 +45,28 @@ export default async function ProjectPage({
               Editar
             </ButtonLink>
           )}
+          <ButtonLink href={`/proyectos/${projectId}/tareas/nueva`}>Nueva tarea</ButtonLink>
         </div>
       </header>
+
+      <div className={boardStyles.board}>
+        {COLUMNS.map(({ status, label }) => (
+          <section key={status} className={boardStyles.column} aria-label={label}>
+            <h2 className={boardStyles.columnHead}>
+              {label} <span className={boardStyles.count}>{board[status].length}</span>
+            </h2>
+            {board[status].length === 0 ? (
+              <p className={boardStyles.empty}>Sin tareas</p>
+            ) : (
+              <ul className={boardStyles.cards}>
+                {board[status].map((task) => (
+                  <TaskCard key={task.id} task={task} currentUserId={me.id} />
+                ))}
+              </ul>
+            )}
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

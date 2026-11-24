@@ -25,3 +25,26 @@ export interface MemberView {
   email: string;
   role: ProjectRole;
 }
+
+export type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+
+export interface TaskView {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string | null;
+  projectId: string;
+  /** null for a regular task, the parent's id for a subtask. */
+  parentId: string | null;
+  creatorId: string;
+  assignee: { id: string; name: string; email: string } | null;
+  subtaskProgress: { done: number; total: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The three columns, always present, already ordered by the API. */
+export type Board = Record<TaskStatus, TaskView[]>;
