@@ -104,6 +104,45 @@ describe('Subtasks (e2e)', () => {
       expect(res.body.TODO[0].subtaskProgress).toEqual({ done: 1, total: 3 });
     });
 
+    it('shows each subtask assignee once on the parent card (board and detail)', async () => {
+      const { owner, member, projectId, parent } = await parentWithSubtasks(0);
+      for (const [title, who] of [
+        ['A', owner],
+        ['B', member],
+        ['C', owner],
+        ['D', null],
+      ] as const) {
+        await createSubtask(app, owner, projectId, parent.id, {
+          title,
+          ...(who && { assigneeId: who.id }),
+        });
+      }
+
+      const board = await api(app, owner)
+        .get(`/projects/${projectId}/board`)
+        .expect(200);
+      const detail = await get(owner, projectId, parent.id);
+
+      const expected = [
+        { id: owner.id, name: owner.name },
+        { id: member.id, name: member.name },
+      ];
+      expect(board.body.TODO[0].subtaskAssignees).toEqual(expected);
+      expect(detail.subtaskAssignees).toEqual(expected);
+    });
+
+    it('a task without subtasks, and a subtask itself, have no subtask assignees', async () => {
+      const { owner, projectId, subtasks } = await parentWithSubtasks(1);
+      const alone = await createTask(app, owner, projectId, { title: 'Sola' });
+
+      expect((await get(owner, projectId, alone.id)).subtaskAssignees).toEqual(
+        [],
+      );
+      expect(
+        (await get(owner, projectId, subtasks[0].id)).subtaskAssignees,
+      ).toEqual([]);
+    });
+
     it('rejects a subtask under a subtask (one level only) and creates nothing', async () => {
       const { owner, projectId, subtasks } = await parentWithSubtasks(1);
 

@@ -37,6 +37,7 @@ describe('Tasks and board (e2e)', () => {
         creatorId: owner.id,
         projectId,
         subtaskProgress: { done: 0, total: 0 },
+        subtaskAssignees: [],
       });
       expect(task).not.toHaveProperty('assigneeId');
       expect(task).not.toHaveProperty('subtasks');

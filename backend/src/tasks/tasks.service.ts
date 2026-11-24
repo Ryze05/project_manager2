@@ -30,6 +30,8 @@ export interface TaskView {
   assignee: { id: string; name: string; email: string } | null;
   /** Computed from the subtasks' states, never stored. */
   subtaskProgress: { done: number; total: number };
+  /** Distinct assignees of the subtasks (oldest subtask first), for the board cards. */
+  subtaskAssignees: { id: string; name: string }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,7 +40,13 @@ export type Board = Record<TaskStatus, TaskView[]>;
 
 export const taskInclude = {
   assignee: { select: { id: true, name: true, email: true } },
-  subtasks: { select: { status: true } },
+  subtasks: {
+    select: {
+      status: true,
+      assignee: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  },
 } satisfies Prisma.TaskInclude;
 
 type TaskRow = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
@@ -59,9 +67,21 @@ export function toView(task: TaskRow): TaskView {
       done: task.subtasks.filter((s) => s.status === 'DONE').length,
       total: task.subtasks.length,
     },
+    subtaskAssignees: distinctAssignees(task.subtasks),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
   };
+}
+
+/** The people behind a list of subtasks, each once, in order of appearance. */
+function distinctAssignees(
+  subtasks: { assignee: { id: string; name: string } | null }[],
+): { id: string; name: string }[] {
+  const seen = new Map<string, { id: string; name: string }>();
+  for (const { assignee } of subtasks) {
+    if (assignee && !seen.has(assignee.id)) seen.set(assignee.id, assignee);
+  }
+  return [...seen.values()];
 }
 
 interface CreateFields {

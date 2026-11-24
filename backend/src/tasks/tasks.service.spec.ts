@@ -37,7 +37,13 @@ describe('TasksService', () => {
   const createdAt = new Date('2026-01-01');
   const include = {
     assignee: { select: { id: true, name: true, email: true } },
-    subtasks: { select: { status: true } },
+    subtasks: {
+      select: {
+        status: true,
+        assignee: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    },
   };
 
   /** A Task row as Prisma returns it with `include`. */
@@ -72,6 +78,7 @@ describe('TasksService', () => {
     creatorId: 'u1',
     assignee: null,
     subtaskProgress: { done: 0, total: 0 },
+    subtaskAssignees: [],
     createdAt,
     updatedAt: createdAt,
     ...overrides,
@@ -238,6 +245,35 @@ describe('TasksService', () => {
       const board = await service.board('p1', 'u1');
 
       expect(board.TODO[0].subtaskProgress).toEqual({ done: 2, total: 4 });
+    });
+
+    it('lists each subtask assignee once, oldest subtask first, skipping unassigned ones', async () => {
+      asMember();
+      const ana = { id: 'a', name: 'Ana' };
+      const luis = { id: 'l', name: 'Luis' };
+      findMany.mockResolvedValue([
+        row({
+          subtasks: [
+            { status: 'DONE', assignee: ana },
+            { status: 'TODO', assignee: null },
+            { status: 'TODO', assignee: luis },
+            { status: 'TODO', assignee: ana },
+          ],
+        }),
+      ]);
+
+      const board = await service.board('p1', 'u1');
+
+      expect(board.TODO[0].subtaskAssignees).toEqual([ana, luis]);
+    });
+
+    it('has no subtask assignees when there are no subtasks', async () => {
+      asMember();
+      findMany.mockResolvedValue([row()]);
+
+      const board = await service.board('p1', 'u1');
+
+      expect(board.TODO[0].subtaskAssignees).toEqual([]);
     });
 
     it('does not leak raw columns (assigneeId, subtasks) into the cards', async () => {
