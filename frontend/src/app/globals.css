@@ -1,0 +1,65 @@
+/* Design tokens. Every colour, space and radius used by the CSS Modules comes
+   from here; dark mode only redefines the colour tokens. */
+:root {
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-text: #1b1f27;
+  --color-text-muted: #5b6472;
+  --color-border: #d9dde4;
+  --color-primary: #2f5fd0;
+  --color-primary-text: #ffffff;
+  --color-danger: #c0392b;
+  --color-success: #1f8a4c;
+  --color-warning: #b7791f;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius: 0.5rem;
+  --shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #12151a;
+    --color-surface: #1b2028;
+    --color-text: #e8eaee;
+    --color-text-muted: #9aa3b2;
+    --color-border: #2d3440;
+    --color-primary: #6b93f0;
+    --color-primary-text: #0d1117;
+    --color-danger: #ef7b6e;
+    --color-success: #55c486;
+    --color-warning: #e3b05a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-primary);
+}

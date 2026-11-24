@@ -8,13 +8,13 @@ Git repo (branch `main`, root `.gitignore` excludes `.env`, `node_modules`, `dis
 - `docs/especificaciones_gestor_proyectos_colaborativo.md` — the product spec (in Spanish); read it before implementing anything, it is the source of truth.
 - `bd_docker/` — Docker Compose for Postgres + pgAdmin.
 - `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD), `TasksModule` (tasks, board and subtasks) and `HealthModule`. `CommentsModule` (comments on tasks and subtasks). `MyTasksModule` ("mis tareas"). Level 1 is complete. The scaffold's "Hello World" controller was removed, so there is no root route. Automated e2e tests exist (`backend/test/`, see "E2E tests").
-- No front-end yet (planned: Next.js on port 3001; `FRONTEND_URL` defaults to `http://localhost:3001`).
+- `frontend/` — Next.js front-end (level 1 in progress, see "Frontend"). Done so far: skeleton only (design tokens, server-side API client, session cookie helpers).
 
 ## Product summary (from the spec)
 
 Collaborative project manager: projects with members and roles, tasks/subtasks on a 3-column board (por hacer / en curso / hecha), comments, and a personal "mis tareas" view. A solo project is just a project with one member.
 
-Planned stack: NestJS (TypeScript, one module per feature: auth, projects, tasks, comments) + Next.js/Tailwind front-end, REST API with JWT, PostgreSQL + Prisma, bcrypt, class-validator, Swagger. DB/ORM/front-end libs are marked "propuesta" (not yet confirmed).
+Planned stack: NestJS (TypeScript, one module per feature: auth, projects, tasks, comments) + Next.js front-end styled with CSS Modules (Tailwind was proposed in the spec and rejected), REST API with JWT, PostgreSQL + Prisma, bcrypt, class-validator, Swagger. DB/ORM/front-end libs are marked "propuesta" (not yet confirmed).
 
 Built in levels; do not start a level until the previous one works and is reviewed:
 1. Core (build order: auth/projects/members → tasks & board → subtasks → comments → mis tareas; if time is short, cut from the end)
@@ -37,6 +37,19 @@ Built in levels; do not start a level until the previous one works and is review
 - Out of scope: nested subtasks, extra roles, external integrations, mobile app, checklists.
 
 Note: the spec has a few level-1 vs level-2 differences (single vs multiple owners, no moving subtasks vs allowed) — implement the level-1 behavior first and keep the code open to the level-2 changes.
+
+## Frontend (`frontend/`)
+
+pnpm project, **Next.js 16** (App Router, `src/`), React 19, TypeScript, **CSS Modules** (no Tailwind), zod. Its `AGENTS.md` says this Next.js has breaking changes: read the guides in `frontend/node_modules/next/dist/docs/` before writing Next code. Facts already learned from them: `middleware` is now **`proxy.ts`**; `cookies()` is **async** and can only set/delete cookies from a Server Action or Route Handler.
+
+Commands (from `frontend/`): `pnpm dev` (port 3001), `pnpm build`, `pnpm start`, `pnpm lint`, `pnpm typecheck`. Env: `frontend/.env` (gitignored; `.env.example` is the template) holds `API_URL` (default `http://localhost:3000/api/v1`), server-side only.
+
+- **The browser never talks to the API.** Everything goes through `src/lib/api.ts` (`import "server-only"`), called from Server Components and Server Actions. It adds the Bearer token, never throws for HTTP or network errors and returns `{ ok, status, ... }` (status 0 = API unreachable). Nest validation errors (`message` as an array) are joined into one string.
+- **Session = the API's JWT in an httpOnly cookie** (`src/lib/session.ts`: `getToken`, `setToken`, `clearToken`; `sameSite: lax`, `secure` in production, 24h like the JWT). Client JS never sees it. Redirecting to the login when there is no session is done in `proxy.ts` (not written yet).
+- **Forms:** Server Actions + `useActionState`, validated with zod in the action. zod only mirrors simple rules for instant feedback; the API stays the source of truth and its errors are always shown.
+- **`cacheComponents` / `partialPrefetching` are off** on purpose: the scaffold enabled them, but nearly everything is per-user and must be fresh, and they force `<Suspense>` around every `cookies()` read. Fetches use `cache: "no-store"`.
+- **Styling:** design tokens (colour, space, radius, shadow) are CSS variables in `src/app/globals.css`, with dark mode through `prefers-color-scheme`. Each component has its own `*.module.css` that only uses those tokens.
+- Build order (same spirit as the backend): skeleton -> register/login + redirect -> projects -> members -> board (move between columns) -> task detail with subtasks -> comments -> mis tareas. Drag & drop and subtask initials on cards are level 2 and wait for the front-end to exist.
 
 ## Database environment (`bd_docker/`)
 
