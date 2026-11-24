@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 import type { EnvironmentVariables } from './config/env.validation.js';
 
 async function bootstrap() {
@@ -18,6 +19,7 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+  app.useGlobalFilters(new PrismaExceptionFilter());
   app.enableCors({ origin: config.get('FRONTEND_URL', { infer: true }) });
   app.enableShutdownHooks();
 

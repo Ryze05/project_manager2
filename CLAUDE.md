@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-Not a git repo yet. Layout:
+Git repo (branch `main`, root `.gitignore` excludes `.env`, `node_modules`, `dist`, generated Prisma client). Layout:
 - `docs/especificaciones_gestor_proyectos_colaborativo.md` — the product spec (in Spanish); read it before implementing anything, it is the source of truth.
 - `bd_docker/` — Docker Compose for Postgres + pgAdmin.
-- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`. Not done yet: auth, projects/members, tasks, comments, "mis tareas" (the default `AppController` "Hello World" is still a placeholder).
+- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). Not done yet: projects/members, tasks, comments, "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route and no e2e test yet.
 - No front-end yet (planned: Next.js on port 3001; `FRONTEND_URL` defaults to `http://localhost:3001`).
 
 ## Product summary (from the spec)
@@ -66,6 +66,15 @@ Setup facts that are easy to miss:
 - **Bootstrap (`src/main.ts`)**: global prefix `api/v1`, global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`, implicit conversion), CORS limited to `FRONTEND_URL`, shutdown hooks, Swagger UI at `/api/docs` (outside the prefix, Bearer auth declared). DTOs use class-validator / class-transformer.
 - **Prisma 7**: config in `prisma.config.ts` (loads `.env` via `dotenv`), schema in `prisma/schema.prisma`, migrations in `prisma/migrations/`. The client is generated into `src/generated/prisma` (gitignored; `postinstall` runs `prisma generate`) — it must live under `src/` because `tsconfig.build.json` sets `rootDir: ./src`. Import it as `.../generated/prisma/client.js`. `PrismaService` (global `PrismaModule`) extends `PrismaClient` with the `@prisma/adapter-pg` driver adapter and connects on module init; inject it instead of instantiating clients. Keep `prisma` CLI and `@prisma/client` on the same version (pinned `7.10.1`).
 - **bcrypt** is a native module: its build script is allowed through `pnpm.onlyBuiltDependencies` in `package.json`.
+
+### Auth
+
+- `JwtAuthGuard` is registered globally (`APP_GUARD` in `AuthModule`): **every route requires a Bearer JWT unless marked `@Public()`** (only `POST /auth/register` and `POST /auth/login` are public). New routes are protected by default; a health route would need `@Public()`.
+- `JwtStrategy.validate` loads the user by `sub` on each request (so a deleted user's token stops working) and sets `request.user = { id, name, email }`; read it with `@CurrentUser()`.
+- `AuthService` hashes passwords with bcrypt (10 rounds) before calling `UsersService.create`, which stores whatever it receives. Wrong email and wrong password return the same 401 message. Responses never include `password`.
+- Signing secret and expiry come from `JWT_SECRET` / `JWT_EXPIRES_IN` via `JwtModule.registerAsync` (the strategy reads the same secret to verify).
+- Password rule lives in a single `@Matches` in `RegisterDto` (two `@Matches` on one property lose a message, since class-validator keys errors by rule type).
+- `GET /auth/me` is not in the spec; it is kept temporarily to check the guard with real requests.
 
 ### Prisma schema decisions
 
