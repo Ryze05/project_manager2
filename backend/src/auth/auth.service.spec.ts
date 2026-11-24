@@ -21,7 +21,11 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    const dto = { name: '  Ana ', email: 'ana@example.com', password: 'Password1' };
+    const dto = {
+      name: 'Ana',
+      email: 'ana@example.com',
+      password: 'Password1',
+    };
 
     it('stores a bcrypt hash, never the plain password', async () => {
       create.mockImplementation(async (data) => ({
@@ -39,7 +43,7 @@ describe('AuthService', () => {
       );
     });
 
-    it('trims the name and returns a token plus the user without password', async () => {
+    it('returns a token plus the user without password', async () => {
       create.mockImplementation(async (data) => ({
         id: 'u1',
         createdAt,

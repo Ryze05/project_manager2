@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Git repo (branch `main`, root `.gitignore` excludes `.env`, `node_modules`, `dist`, generated Prisma client). Layout:
 - `docs/especificaciones_gestor_proyectos_colaborativo.md` — the product spec (in Spanish); read it before implementing anything, it is the source of truth.
 - `bd_docker/` — Docker Compose for Postgres + pgAdmin.
-- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). Not done yet: projects/members, tasks, comments, "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route and no e2e test yet.
+- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove) and `ProjectsModule` (project CRUD). Not done yet: tasks, comments, "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route and no e2e test yet.
 - No front-end yet (planned: Next.js on port 3001; `FRONTEND_URL` defaults to `http://localhost:3001`).
 
 ## Product summary (from the spec)
@@ -74,6 +74,17 @@ Setup facts that are easy to miss:
 - `AuthService` hashes passwords with bcrypt (10 rounds) before calling `UsersService.create`, which stores whatever it receives. Wrong email and wrong password return the same 401 message. Responses never include `password`.
 - Signing secret and expiry come from `JWT_SECRET` / `JWT_EXPIRES_IN` via `JwtModule.registerAsync` (the strategy reads the same secret to verify).
 - Password rule lives in a single `@Matches` in `RegisterDto` (two `@Matches` on one property lose a message, since class-validator keys errors by rule type).
+- Names (`RegisterDto.name`, `CreateProjectDto.name`) are trimmed with a `@Transform` in the DTO, before `@IsNotEmpty()` runs, so a whitespace-only name is rejected. Services assume the DTO already trimmed. Because of the global `enableImplicitConversion`, a number sent for a string field (e.g. `"name": 123`) is accepted and stored as `"123"`; this was reviewed and left as is.
+
+### Projects and members
+
+- **Dependency direction: `ProjectsModule` → `MembersModule` → `UsersModule`**, never the reverse. `MembersService` owns the `ProjectMember` table and exports `requireMember(projectId, userId)` / `requireOwner(...)`; both return the membership (so callers get the `role` for free) and throw. Tasks and comments should import `MembersModule` for the same checks instead of querying memberships themselves.
+- **Non-members get 404, not 403** (`requireMember`), so a project's existence is not revealed. A plain member trying an owner-only action gets 403 (`requireOwner`).
+- Routes: `/projects` (create, list mine, get, patch, delete) and `/projects/:projectId/members` (list, add by email, delete `:userId`; add/remove are owner-only). Every project response is a `ProjectView` (`role` of the caller + `memberCount`); members are flattened to `{ id, name, email, role }`.
+- `ProjectsService.create` creates the project and its OWNER membership in one nested Prisma create (atomic, no dependency on `MembersService`).
+- `MembersService.remove` unassigns that user's tasks and subtasks in the project and deletes the membership in one `$transaction` (`Task.assigneeId` points at `User`, so the DB does not do it). The owner cannot be removed (403), which also covers "owner cannot leave"; there is no separate leave endpoint.
+- Emails are matched lowercased/trimmed in `UsersService`, but `AddMemberDto` uses `@IsEmail`, which rejects surrounding whitespace (400).
+- Unit tests mock Prisma; the Prisma queries (ordering by role, `_count`, composite key `userId_projectId`, the transaction, cascades) were verified once with real requests against Postgres, not by an automated e2e test.
 - `GET /auth/me` is not in the spec; it is kept temporarily to check the guard with real requests.
 
 ### Prisma schema decisions
