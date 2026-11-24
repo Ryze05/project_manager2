@@ -66,7 +66,7 @@ La lógica del back-end se concentra en mantener coherentes las tareas y sus sub
 
 - Una tarea no puede marcarse como hecha si tiene subtareas pendientes.
 - Si se reabre o se crea una subtarea con la tarea padre hecha, la padre vuelve a "en curso".
-- La tarea padre nunca se completa sola: cerrarla es siempre una decisión manual.
+- Cuando se completa la última subtarea pendiente, la tarea padre pasa sola a "hecha". Borrar subtareas nunca cambia el estado de la padre. Si más tarde se reabre o se crea una subtarea, la padre vuelve a "en curso" (regla anterior).
 - Una subtarea no puede tener subtareas propias (un solo nivel).
 - Una subtarea nace dentro de su tarea padre y no se puede mover a otro padre; tampoco se puede convertir una tarea existente en subtarea.
 - El progreso (2/4) se calcula a partir del estado de las subtareas, no se almacena.

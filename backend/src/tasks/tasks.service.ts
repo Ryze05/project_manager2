@@ -225,7 +225,9 @@ export class TasksService {
 
     const parentToReopen = await this.parentToReopen(existing, dto.status);
 
-    // The parent is never completed automatically, only reopened.
+    // A DONE parent is reopened when one of its subtasks is reopened, and a
+    // parent is completed when its last pending subtask is completed. Both
+    // happen in the same transaction as the subtask's own update.
     const task = await this.prisma.$transaction(async (tx) => {
       if (parentToReopen) {
         await tx.task.update({
@@ -233,11 +235,19 @@ export class TasksService {
           data: { status: TaskStatus.IN_PROGRESS },
         });
       }
-      return tx.task.update({
+      const updated = await tx.task.update({
         where: { id: taskId },
         data: { ...fieldsOf(dto), status: dto.status },
         include: taskInclude,
       });
+      if (
+        existing.parentId !== null &&
+        existing.status !== TaskStatus.DONE &&
+        dto.status === TaskStatus.DONE
+      ) {
+        await this.completeParentIfFinished(tx, existing.parentId);
+      }
+      return updated;
     });
     return toView(task);
   }
@@ -272,6 +282,25 @@ export class TasksService {
       throw new NotFoundException('Tarea no encontrada');
     }
     return task;
+  }
+
+  /**
+   * Called right after a subtask became DONE: when no sibling is pending any
+   * more, the parent is completed too. Never touches a parent that is already
+   * DONE, and deleting subtasks never goes through here.
+   */
+  private async completeParentIfFinished(
+    tx: Prisma.TransactionClient,
+    parentId: string,
+  ): Promise<void> {
+    const pending = await tx.task.count({
+      where: { parentId, status: { not: TaskStatus.DONE } },
+    });
+    if (pending > 0) return;
+    await tx.task.updateMany({
+      where: { id: parentId, status: { not: TaskStatus.DONE } },
+      data: { status: TaskStatus.DONE },
+    });
   }
 
   /**

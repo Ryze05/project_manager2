@@ -15,6 +15,8 @@ describe('TasksService', () => {
   const findFirst = vi.fn();
   const findUnique = vi.fn();
   const update = vi.fn();
+  const count = vi.fn();
+  const updateMany = vi.fn();
   const del = vi.fn();
   const transaction = vi.fn();
   const requireMember = vi.fn();
@@ -22,7 +24,7 @@ describe('TasksService', () => {
 
   // The interactive transaction runs its callback with a client exposing the
   // same task mocks, so assertions on create/update work inside and outside it.
-  const tx = { task: { create, update } };
+  const tx = { task: { create, update, count, updateMany } };
 
   const service = new TasksService(
     {
@@ -630,18 +632,57 @@ describe('TasksService', () => {
       expect(update.mock.calls[0][0].where).toEqual({ id: 's1' });
     });
 
-    it('never completes the parent when its last subtask is completed', async () => {
-      asMember();
-      findFirst.mockResolvedValue(
-        row({ id: 's1', parentId: 'parent', status: 'TODO' }),
-      );
-      update.mockResolvedValue(row({ id: 's1', status: 'DONE' }));
+    describe('completing the last pending subtask', () => {
+      const completing = () => {
+        asMember();
+        findFirst.mockResolvedValue(
+          row({ id: 's1', parentId: 'parent', status: 'IN_PROGRESS' }),
+        );
+        update.mockResolvedValue(row({ id: 's1', status: 'DONE' }));
+      };
 
-      await service.update('p1', 's1', 'u1', { status: 'DONE' });
+      it('completes the parent, in the same transaction, when no sibling is pending', async () => {
+        completing();
+        count.mockResolvedValue(0);
 
-      expect(findUnique).not.toHaveBeenCalled();
-      expect(update).toHaveBeenCalledTimes(1);
-      expect(update.mock.calls[0][0].where).toEqual({ id: 's1' });
+        await service.update('p1', 's1', 'u1', { status: 'DONE' });
+
+        expect(transaction).toHaveBeenCalledTimes(1);
+        expect(count).toHaveBeenCalledWith({
+          where: { parentId: 'parent', status: { not: 'DONE' } },
+        });
+        expect(updateMany).toHaveBeenCalledWith({
+          where: { id: 'parent', status: { not: 'DONE' } },
+          data: { status: 'DONE' },
+        });
+      });
+
+      it('leaves the parent alone while another subtask is pending', async () => {
+        completing();
+        count.mockResolvedValue(1);
+
+        await service.update('p1', 's1', 'u1', { status: 'DONE' });
+
+        expect(updateMany).not.toHaveBeenCalled();
+      });
+
+      it('does not look at the parent unless the subtask is becoming DONE now', async () => {
+        asMember();
+        update.mockResolvedValue(row());
+
+        for (const [existing, dto] of [
+          [row({ parentId: 'parent', status: 'TODO' }), { status: 'IN_PROGRESS' }],
+          [row({ parentId: 'parent', status: 'DONE' }), { status: 'DONE' }],
+          [row({ parentId: 'parent', status: 'TODO' }), { title: 'solo título' }],
+          [row({ parentId: null, status: 'TODO' }), { status: 'DONE' }],
+        ] as const) {
+          findFirst.mockResolvedValue(existing);
+          await service.update('p1', 't1', 'u1', dto);
+        }
+
+        expect(count).not.toHaveBeenCalled();
+        expect(updateMany).not.toHaveBeenCalled();
+      });
     });
 
     it('does not look the parent up unless a DONE subtask is being reopened', async () => {

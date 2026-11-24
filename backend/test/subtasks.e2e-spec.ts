@@ -203,17 +203,38 @@ describe('Subtasks (e2e)', () => {
         .expect(200);
     });
 
-    it('allows it once every subtask is done, but never completes the parent by itself', async () => {
+    it('completes the parent by itself when its last pending subtask is done', async () => {
       const { owner, projectId, parent, subtasks } =
         await parentWithSubtasks(2);
-      for (const sub of subtasks) {
-        await setStatus(owner, projectId, sub.id, 'DONE').expect(200);
-      }
 
-      expect(await progress(owner, projectId, parent.id)).toBe('2/2');
+      await setStatus(owner, projectId, subtasks[0].id, 'DONE').expect(200);
       expect((await get(owner, projectId, parent.id)).status).toBe('TODO');
 
+      await setStatus(owner, projectId, subtasks[1].id, 'DONE').expect(200);
+      expect(await progress(owner, projectId, parent.id)).toBe('2/2');
+      expect((await get(owner, projectId, parent.id)).status).toBe('DONE');
+    });
+
+    it('completes an IN_PROGRESS parent too, and it can still be closed by hand', async () => {
+      const { owner, projectId, parent, subtasks } =
+        await parentWithSubtasks(1);
+      await setStatus(owner, projectId, parent.id, 'IN_PROGRESS').expect(200);
+
+      await setStatus(owner, projectId, subtasks[0].id, 'DONE').expect(200);
+
+      expect((await get(owner, projectId, parent.id)).status).toBe('DONE');
       await setStatus(owner, projectId, parent.id, 'DONE').expect(200);
+    });
+
+    it('does not complete the parent while an IN_PROGRESS subtask is left', async () => {
+      const { owner, projectId, parent, subtasks } =
+        await parentWithSubtasks(2);
+      await setStatus(owner, projectId, subtasks[0].id, 'DONE').expect(200);
+      await setStatus(owner, projectId, subtasks[1].id, 'IN_PROGRESS').expect(
+        200,
+      );
+
+      expect((await get(owner, projectId, parent.id)).status).toBe('TODO');
     });
 
     it('lets a task with no subtasks be completed', async () => {
@@ -248,15 +269,16 @@ describe('Subtasks (e2e)', () => {
       await setStatus(owner, projectId, parent.id, 'DONE').expect(409);
     });
 
-    it('completing the subtask again does not complete the parent', async () => {
+    it('completing the reopened subtask again completes the parent again', async () => {
       const { owner, projectId, parent, subtasks } = await doneParent();
       await setStatus(owner, projectId, subtasks[0].id, 'TODO').expect(200);
-
-      await setStatus(owner, projectId, subtasks[0].id, 'DONE').expect(200);
-
       expect((await get(owner, projectId, parent.id)).status).toBe(
         'IN_PROGRESS',
       );
+
+      await setStatus(owner, projectId, subtasks[0].id, 'DONE').expect(200);
+
+      expect((await get(owner, projectId, parent.id)).status).toBe('DONE');
     });
 
     it('creating a subtask under a done parent sends it back to IN_PROGRESS', async () => {
