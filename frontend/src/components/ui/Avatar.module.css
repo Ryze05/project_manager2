@@ -1,0 +1,46 @@
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: var(--fw-bold);
+}
+
+.person {
+  border-radius: 50%;
+}
+
+.project {
+  border-radius: var(--r-sm);
+}
+
+.person.sm {
+  width: 28px;
+  height: 28px;
+  font-size: var(--fs-xs);
+}
+
+.project.sm {
+  width: 32px;
+  height: 32px;
+  font-size: var(--fs-md);
+}
+
+.person.lg {
+  width: 40px;
+  height: 40px;
+  font-size: var(--fs-md);
+}
+
+.project.lg {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-lg);
+}
+
+.me {
+  background: var(--accent);
+  color: var(--on-accent);
+}

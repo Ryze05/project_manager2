@@ -1,42 +1,64 @@
-/* Design tokens. Every colour, space and radius used by the CSS Modules comes
-   from here; dark mode only redefines the colour tokens. */
+/* Design tokens. Every colour, space, radius and font size used by the CSS
+   Modules comes from here (see docs/diseno/sistema-de-diseno.html). Light only. */
 :root {
-  --color-bg: #f6f7f9;
-  --color-surface: #ffffff;
-  --color-text: #1b1f27;
-  --color-text-muted: #5b6472;
-  --color-border: #d9dde4;
-  --color-primary: #2f5fd0;
-  --color-primary-text: #ffffff;
-  --color-danger: #c0392b;
-  --color-success: #1f8a4c;
-  --color-warning: #b7791f;
+  /* Colour: neutrals, one purple accent, one warning tone. */
+  --bg: #fcfaf6;
+  --surface: #ffffff;
+  --sunken: #f4f0e8;
+  --line: #eee9df;
+  --line-strong: #e0d9cb;
+  --text: #1e1a2b;
+  --muted: #6b6577;
+  --faint: #a39dae;
+  --accent: #2e1f4f;
+  --accent-hover: #432e73;
+  --accent-soft: #ece8f4; /* hover, selection, initials, role */
+  --accent-mid: #d8cfea; /* counters over soft backgrounds */
+  --on-accent: #ffffff;
+  --danger: #a8453a; /* only overdue, high priority and errors */
+  --danger-soft: #f6e4e1;
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
+  /* Space: 4 px scale. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --page-pad: var(--s6);
+  --card-pad: var(--s5);
+  --gap: var(--s4);
+  --section-gap: var(--s6);
 
-  --radius: 0.5rem;
-  --shadow: 0 1px 2px rgb(0 0 0 / 8%);
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Shape. */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --r-full: 999px;
+  --shadow: 0 1px 2px rgb(30 26 43 / 4%), 0 12px 28px -18px rgb(30 26 43 / 14%);
+
+  /* Type: 7 sizes, 3 weights. */
+  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-base: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-bold: 600;
+
+  --sidebar-w: 240px;
+  --page-max: 960px;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (max-width: 900px) {
   :root {
-    --color-bg: #12151a;
-    --color-surface: #1b2028;
-    --color-text: #e8eaee;
-    --color-text-muted: #9aa3b2;
-    --color-border: #2d3440;
-    --color-primary: #6b93f0;
-    --color-primary-text: #0d1117;
-    --color-danger: #ef7b6e;
-    --color-success: #55c486;
-    --color-warning: #e3b05a;
-    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    --page-pad: var(--s4);
+    --card-pad: var(--s4);
   }
 }
 
@@ -53,13 +75,51 @@ body {
 }
 
 body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+h3 {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
 a {
-  color: var(--color-primary);
+  color: var(--accent);
 }
