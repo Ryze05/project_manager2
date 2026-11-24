@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Git repo (branch `main`, root `.gitignore` excludes `.env`, `node_modules`, `dist`, generated Prisma client). Layout:
 - `docs/especificaciones_gestor_proyectos_colaborativo.md` — the product spec (in Spanish); read it before implementing anything, it is the source of truth.
 - `bd_docker/` — Docker Compose for Postgres + pgAdmin.
-- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD), `TasksModule` (tasks, board and subtasks) and `HealthModule`. `CommentsModule` (comments on tasks and subtasks). Not done yet: "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route. Automated e2e tests exist (`backend/test/`, see "E2E tests").
+- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD), `TasksModule` (tasks, board and subtasks) and `HealthModule`. `CommentsModule` (comments on tasks and subtasks). `MyTasksModule` ("mis tareas"). Level 1 is complete. The scaffold's "Hello World" controller was removed, so there is no root route. Automated e2e tests exist (`backend/test/`, see "E2E tests").
 - No front-end yet (planned: Next.js on port 3001; `FRONTEND_URL` defaults to `http://localhost:3001`).
 
 ## Product summary (from the spec)
@@ -108,6 +108,13 @@ Setup facts that are easy to miss:
 - `content` is trimmed in the DTO, required, max 2000. `UpdateCommentDto` extends the create one (no `PartialType`: the text is always required). The thread is oldest first, no pagination. Responses carry `author {id, name, email}` and no `authorId`.
 - Removing a member keeps their comments (history); `Comment.author` is `Restrict`, so deleting a user with comments is blocked by the DB.
 - Covered by `comments.service.spec.ts` and `test/comments.e2e-spec.ts`, checked with mutations (owner editing, member deleting, missing task/project scoping, `editedAt`, thread order).
+
+### Mis tareas
+
+- `GET /api/v1/me/tasks?includeDone=true|false` (`src/my-tasks/`). Read-only, no dependency on `TasksModule` (it reuses its exported `taskInclude`/`toView` and queries Prisma directly).
+- Returns tasks **and subtasks** assigned to the caller, in projects where they are still a member (the membership filter is defence in depth: removing a member already unassigns their tasks; a dedicated e2e deletes the membership directly to cover it). Each item is a `TaskView` plus `project {id, name}` and `parent {id, title} | null`.
+- Default = TODO + IN_PROGRESS; `includeDone=true` adds DONE. Order: due date (none last), then priority (HIGH first), then creation. No pagination, no other filters (level 2).
+- **`includeDone` is mapped by hand** in `MyTasksQueryDto`: with the global `enableImplicitConversion`, the string `"false"` would become `true`. Only `true`/`false` are accepted, anything else is 400 (covered by a DTO spec and an e2e).
 
 ### E2E tests
 

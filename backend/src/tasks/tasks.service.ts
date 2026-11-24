@@ -36,14 +36,14 @@ export interface TaskView {
 
 export type Board = Record<TaskStatus, TaskView[]>;
 
-const taskInclude = {
+export const taskInclude = {
   assignee: { select: { id: true, name: true, email: true } },
   subtasks: { select: { status: true } },
 } satisfies Prisma.TaskInclude;
 
 type TaskRow = Prisma.TaskGetPayload<{ include: typeof taskInclude }>;
 
-function toView(task: TaskRow): TaskView {
+export function toView(task: TaskRow): TaskView {
   return {
     id: task.id,
     title: task.title,
