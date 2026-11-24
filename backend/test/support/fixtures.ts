@@ -39,6 +39,26 @@ export async function createTask(
   return res.body as { id: string; title: string; [key: string]: unknown };
 }
 
+/** Writes a comment through the API and returns its view. */
+export async function createComment(
+  app: INestApplication,
+  user: TestUser,
+  projectId: string,
+  taskId: string,
+  content: string,
+) {
+  const res = await api(app, user)
+    .post(`/projects/${projectId}/tasks/${taskId}/comments`, { content })
+    .expect(201);
+  return res.body as {
+    id: string;
+    content: string;
+    createdAt: string;
+    editedAt: string | null;
+    [key: string]: unknown;
+  };
+}
+
 /** Creates a subtask through the API and returns its view. */
 export async function createSubtask(
   app: INestApplication,
