@@ -4,11 +4,18 @@ import { PriorityBadge } from "@/components/PriorityBadge";
 import { TaskCheck } from "@/components/TaskCheck/TaskCheck";
 import { Avatar, ButtonLink, Card, ProgressBar } from "@/components/ui";
 import { formatDueDate, isOverdue } from "@/lib/format";
-import { getComments, getMe, getProject, getSubtasks, getTask } from "@/lib/queries";
+import {
+  getComments,
+  getMe,
+  getMembers,
+  getProject,
+  getSubtasks,
+  getTask,
+} from "@/lib/queries";
 import projectStyles from "../../../projects.module.css";
 import { deleteTaskAction } from "../../actions";
-import { AddSubtaskForm } from "./AddSubtaskForm";
 import { Comments } from "./comments/Comments";
+import { NewSubtaskButton } from "./NewSubtaskButton";
 import { StatusSelect } from "./StatusSelect";
 import styles from "./task.module.css";
 
@@ -19,12 +26,13 @@ export default async function TaskPage({
   const { projectId, taskId } = await params;
   // One round for everything that only needs the ids in the URL (the list of
   // subtasks of a subtask is just empty). Only a subtask needs a second one, for its parent.
-  const [project, task, me, subtasks, comments] = await Promise.all([
+  const [project, task, me, subtasks, comments, members] = await Promise.all([
     getProject(projectId),
     getTask(projectId, taskId),
     getMe(),
     getSubtasks(projectId, taskId),
     getComments(projectId, taskId),
+    getMembers(projectId),
   ]);
   const isSubtask = task.parentId !== null;
   const parent = task.parentId ? await getTask(projectId, task.parentId) : null;
@@ -119,7 +127,7 @@ export default async function TaskPage({
                 </li>
               ))}
             </ul>
-            <AddSubtaskForm projectId={projectId} parentId={taskId} />
+            <NewSubtaskButton projectId={projectId} parentId={taskId} members={members} />
           </Card>
         )}
 

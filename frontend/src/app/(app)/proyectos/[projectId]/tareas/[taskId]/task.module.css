@@ -109,20 +109,24 @@
 
 .addRow {
   display: flex;
-  flex-direction: column;
-  gap: var(--s1);
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
   padding: var(--s3) 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  font-weight: var(--fw-medium);
+  text-align: left;
 }
 
-/* The add row continues the list: a divider only when there are subtasks above. */
+/* The row continues the list: a divider only when there are subtasks above. */
 .list:not(:empty) + .addRow {
   border-top: 1px solid var(--line);
 }
 
-.addLine {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
+.addRow:hover {
+  color: var(--accent);
 }
 
 .plus {
@@ -131,28 +135,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  color: var(--faint);
   font-size: var(--fs-lg);
   line-height: 1;
-}
-
-.addLine:focus-within .plus {
-  color: var(--accent);
-}
-
-.addInput {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font-weight: var(--fw-medium);
-  outline: none;
-}
-
-.addInput::placeholder {
-  color: var(--faint);
-  font-weight: var(--fw-normal);
 }
 
 .parentLink {

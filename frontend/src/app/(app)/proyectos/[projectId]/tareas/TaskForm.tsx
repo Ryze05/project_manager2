@@ -10,7 +10,12 @@ import styles from "../../projects.module.css";
 type Props = {
   action: (state: TaskFormState, formData: FormData) => Promise<TaskFormState>;
   members: MemberView[];
-  cancelHref: string;
+  /** Where "Cancelar" goes when the form is a page... */
+  cancelHref?: string;
+  /** ...or what it does when the form lives in a modal. */
+  onCancel?: () => void;
+  /** Called after a save that stays on the page (the modal uses it to close). */
+  onSaved?: () => void;
   submitLabel: string;
   pendingLabel: string;
   /** Current values when editing. */
@@ -18,8 +23,25 @@ type Props = {
 };
 
 /** Fields shared by "new task" and "edit task". */
-export function TaskForm({ action, members, cancelHref, submitLabel, pendingLabel, initial }: Props) {
-  const [state, formAction, pending] = useActionState(action, {} as TaskFormState);
+export function TaskForm({
+  action,
+  members,
+  cancelHref,
+  onCancel,
+  onSaved,
+  submitLabel,
+  pendingLabel,
+  initial,
+}: Props) {
+  const [state, formAction, pending] = useActionState(
+    async (prev: TaskFormState, formData: FormData) => {
+      const next = await action(prev, formData);
+      // No errors and no message: the save worked (a page action would have redirected).
+      if (!next.errors && !next.message) onSaved?.();
+      return next;
+    },
+    {} as TaskFormState,
+  );
   const values = state.values ?? initial;
 
   return (
@@ -69,9 +91,15 @@ export function TaskForm({ action, members, cancelHref, submitLabel, pendingLabe
         </p>
       )}
       <div className={styles.formActions}>
-        <Link href={cancelHref} className={styles.cancel}>
-          Cancelar
-        </Link>
+        {onCancel ? (
+          <Button variant="ghost" onClick={onCancel} disabled={pending}>
+            Cancelar
+          </Button>
+        ) : (
+          <Link href={cancelHref ?? "/"} className={styles.cancel}>
+            Cancelar
+          </Link>
+        )}
         <Button type="submit" disabled={pending}>
           {pending ? pendingLabel : submitLabel}
         </Button>

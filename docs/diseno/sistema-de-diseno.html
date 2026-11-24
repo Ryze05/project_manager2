@@ -195,6 +195,8 @@
   .list > li + .add, .list + .add { border-top: 1px solid var(--line); }
   .plus { width: 18px; height: 18px; flex: none; display: grid; place-items: center; color: var(--faint); font-size: var(--fs-lg); line-height: 1; }
   .add:focus-within .plus { color: var(--accent); }
+  .add--btn { width: 100%; border: 0; background: transparent; color: var(--faint); font-weight: var(--fw-medium); text-align: left; }
+  .add--btn:hover { color: var(--accent); }
   .bare { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; font-weight: var(--fw-medium); outline: none; }
   .bare::placeholder { color: var(--faint); font-weight: var(--fw-normal); }
   textarea.input { resize: none; line-height: 1.5; }
@@ -482,7 +484,7 @@
             <li class="is-done"><span class="check check--sq on">✓</span><div class="body"><span class="title">Diseñar relaciones</span></div><span class="avatar">P</span></li>
             <li><span class="check check--sq"></span><div class="body"><span class="title">Revisar el diseño con el equipo</span></div><span class="avatar">L</span></li>
           </ul>
-          <div class="add"><span class="plus">+</span><input class="bare" placeholder="Añadir una subtarea…"></div>
+          <button class="add add--btn"><span class="plus">+</span>Añadir subtarea</button>
         </article>
         <article class="card">
           <div class="section-label"><span>Comentarios</span><span>2</span></div>
