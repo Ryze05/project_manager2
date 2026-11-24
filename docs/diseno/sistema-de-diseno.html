@@ -563,7 +563,7 @@
   const MINE = [
     { t: 'Definir entidades', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'high', due: '10 ene 2020', b: 'overdue', late: true },
     { t: 'Maquetar la portada', p: 'Web del club', par: null, pr: 'mid', due: '24 nov', b: 'today' },
-    { t: 'Configurar el servidor', p: 'Entrenamientos', par: null, pr: 'mid', due: '28 nov', b: 'week' },
+    { t: 'Configurar el servidor', p: 'Entrenamientos', par: null, sub: '1/4', pr: 'mid', due: '28 nov', b: 'week' },
     { t: 'Diseñar relaciones', p: 'Entrenamientos', par: 'Diseñar la base de datos', pr: 'low', due: '5 dic', b: 'later' },
     { t: 'Revisar capítulo 2', p: 'TFG', par: null, pr: 'mid', due: 'Sin fecha', b: 'none' },
     { t: 'Crear el repositorio', p: 'Entrenamientos', par: null, pr: 'low', due: '1 dic', b: 'done', done: true },
@@ -573,7 +573,7 @@
   const PRIO = { high: '<span class="badge badge--danger badge--dot">Alta</span>', mid: '<span class="badge badge--dot">Media</span>', low: '<span class="badge badge--outline badge--dot">Baja</span>' };
   function mineRow(t, withProject) {
     return `<li class="${t.done ? 'is-done' : ''}"><span class="check check--sq ${t.done ? 'on' : ''}">${t.done ? '✓' : ''}</span>
-      <div class="body"><span class="title">${t.t}</span>${t.par ? `<span class="meta">Subtarea de «${t.par}»</span>` : ''}</div>
+      <div class="body"><span class="title">${t.par ? '<span style="color:var(--faint)">↳ </span>' : ''}${t.t}</span>${t.par ? `<span class="meta">en «${t.par}»</span>` : (t.sub ? `<span class="meta">${t.sub} subtareas</span>` : '')}</div>
       ${withProject ? `<span class="badge badge--outline">${t.p}</span>` : ''}${PRIO[t.pr]}<span class="when ${t.late ? 'danger' : ''}">${t.due}</span></li>`;
   }
   function renderMine() {

@@ -63,6 +63,8 @@ export default async function MyTasksPage({
     (t) => t.status === "IN_PROGRESS" && !["overdue", "today"].includes(bucketOf(t)),
   ).length;
 
+  const pending = tasks.filter((t) => t.status !== "DONE").length;
+
   return (
     <div className={styles.page}>
       <header className={styles.head}>
@@ -71,7 +73,11 @@ export default async function MyTasksPage({
           <h1>Mis tareas</h1>
           <p className={styles.lead}>
             {overdue + today + inProgress === 0 ? (
-              "Estás al día."
+              pending === 0 ? (
+                "Estás al día."
+              ) : (
+                `Tienes ${plural(pending, "tarea pendiente", "tareas pendientes")}.`
+              )
             ) : (
               <>
                 Tienes{" "}
@@ -152,10 +158,29 @@ function TaskList({ tasks, withProject }: { tasks: MyTaskView[]; withProject: bo
                 href={`/proyectos/${task.projectId}/tareas/${task.id}`}
                 className={styles.title}
               >
+                {task.parent && (
+                  <span className={styles.arrow} aria-hidden="true">
+                    ↳{" "}
+                  </span>
+                )}
                 {task.title}
               </Link>
-              {task.parent && (
-                <span className={styles.meta}>Subtarea de «{task.parent.title}»</span>
+              {task.parent ? (
+                <span className={styles.meta}>
+                  en{" "}
+                  <Link
+                    href={`/proyectos/${task.projectId}/tareas/${task.parent.id}`}
+                    className={styles.parentLink}
+                  >
+                    «{task.parent.title}»
+                  </Link>
+                </span>
+              ) : (
+                task.subtaskProgress.total > 0 && (
+                  <span className={styles.meta}>
+                    {task.subtaskProgress.done}/{task.subtaskProgress.total} subtareas
+                  </span>
+                )
               )}
             </div>
             {withProject && <Badge tone="outline">{task.project.name}</Badge>}
