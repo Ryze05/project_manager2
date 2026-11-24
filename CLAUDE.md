@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Git repo (branch `main`, root `.gitignore` excludes `.env`, `node_modules`, `dist`, generated Prisma client). Layout:
 - `docs/especificaciones_gestor_proyectos_colaborativo.md` — the product spec (in Spanish); read it before implementing anything, it is the source of truth.
 - `bd_docker/` — Docker Compose for Postgres + pgAdmin.
-- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD), `TasksModule` (tasks, board and subtasks) and `HealthModule`. Not done yet: comments, "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route and no e2e test yet.
+- `backend/` — NestJS API (level 1 in progress). Done so far: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD), `TasksModule` (tasks, board and subtasks) and `HealthModule`. Not done yet: comments, "mis tareas". The scaffold's "Hello World" controller was removed, so there is no root route. Automated e2e tests exist (`backend/test/`, see "E2E tests").
 - No front-end yet (planned: Next.js on port 3001; `FRONTEND_URL` defaults to `http://localhost:3001`).
 
 ## Product summary (from the spec)
@@ -57,7 +57,7 @@ pnpm project, NestJS 12, **ESM** (`"type": "module"`): relative imports must end
 
 Commands (run from `backend/`; the DB stack must be up for anything touching Postgres):
 - `pnpm start:dev` — run with watch; `pnpm build` then `node --env-file=.env dist/main.js` to run the build
-- `pnpm test` — unit tests; single file: `pnpm test src/path/file.spec.ts`; `pnpm test:e2e` — e2e (separate vitest config)
+- `pnpm test` — unit tests; single file: `pnpm test src/path/file.spec.ts`; `pnpm test:e2e` — e2e against a real Postgres (separate vitest config; needs the DB stack up, see "E2E tests")
 - `pnpm lint`, `pnpm format`
 - `pnpm db:migrate` (= `prisma migrate dev`), `pnpm exec prisma generate`, `pnpm db:studio`
 
@@ -89,7 +89,7 @@ Setup facts that are easy to miss:
 - `ProjectsService.create` creates the project and its OWNER membership in one nested Prisma create (atomic, no dependency on `MembersService`).
 - `MembersService.remove` unassigns that user's tasks and subtasks in the project and deletes the membership in one `$transaction` (`Task.assigneeId` points at `User`, so the DB does not do it). The owner cannot be removed (403), which also covers "owner cannot leave"; there is no separate leave endpoint.
 - Emails are matched lowercased/trimmed in `UsersService`, but `AddMemberDto` uses `@IsEmail`, which rejects surrounding whitespace (400).
-- Unit tests mock Prisma; the Prisma queries (ordering by role, `_count`, composite key `userId_projectId`, the transaction, cascades) were verified once with real requests against Postgres, not by an automated e2e test.
+- Unit tests mock Prisma; the Prisma queries (ordering by role, `_count`, composite key `userId_projectId`, the transaction, cascades) are covered by the e2e tests (`backend/test/members.e2e-spec.ts`, `projects.e2e-spec.ts`).
 
 ### Tasks and board
 
@@ -99,6 +99,18 @@ Setup facts that are easy to miss:
 - **`null` vs `undefined` in updates:** `description`, `dueDate` and `assigneeId` accept `null` to clear them; omitted means untouched. `title`, `priority` and `status` reject `null` (400). `@IsOptional()` lets `null` through, so non-nullable fields use `@ValidateIf(value !== undefined)` instead, and `UpdateTaskDto` redeclares them (`PartialType` would add `@IsOptional()` back).
 - An assignee must be a project member (`MembersService.isMember`, non-throwing) or the request gets a 400. Delete: owner deletes any task, a member only the ones they created (403 otherwise).
 - **Subtask rules live in `TasksService` (one service, same table):** creating a subtask under a subtask is a 400 ("Una subtarea no puede tener subtareas"); `PATCH status: DONE` on a task with any subtask not DONE (including IN_PROGRESS) is a **409** (the request is well-formed, the task's state conflicts); creating a subtask under a DONE parent, or reopening a DONE subtask (DONE -> any other status) while its parent is DONE, sets the parent to IN_PROGRESS **in the same interactive `$transaction`**. The parent is never completed automatically, and deleting subtasks never changes the parent. `update` always runs inside a `$transaction` (tests mock it by calling the callback with the same task mocks). Validation (assignee, level, 409) happens before the transaction, so a rejected request leaves the parent untouched. Rollback itself was checked once against Postgres with the `pg` adapter (a throw, and a real FK error P2003, after the parent update leave the parent as it was and create no subtask); concurrent requests are not guarded beyond that (read committed).
+
+### E2E tests
+
+`pnpm test:e2e` runs `backend/test/*.e2e-spec.ts` (supertest against the real `AppModule`, same global setup as `main.ts` through `configureApp()` in `src/app.setup.ts`; no Swagger). Needs the Postgres container up and a `backend/.env` (only its `DATABASE_URL` is read).
+
+- **Separate database, never the dev one.** `test/support/test-database.ts` derives the URL from `DATABASE_URL` by appending `_test` to the database name (`gestor` -> `gestor_test`), or uses `TEST_DATABASE_URL`. It **refuses any name that does not end in `_test`**, because the setup truncates every table.
+- `test/global-setup.ts` runs once before everything: creates the database if missing (with `pg`), applies `prisma migrate deploy`, and truncates all tables except `_prisma_migrations`. It does **not** use `prisma migrate reset`: Prisma blocks destructive commands when it detects an AI agent, and that guard must not be bypassed. Data from the last run stays in `gestor_test` afterwards (handy to debug a failure) and is wiped at the next start.
+- `vitest.config.e2e.ts` injects the app's env (`DATABASE_URL` of the test DB, a fixed fake `JWT_SECRET`, `FRONTEND_URL`...), which wins over `.env`, and sets `fileParallelism: false` (one shared database; files run one after another).
+- Tests create their own data with unique emails and never depend on each other. Helpers: `test/support/app.ts` (`createTestApp`, `registerUser`, `api(app, user).get/post/patch/delete`, paths relative to `/api/v1`) and `test/support/fixtures.ts` (`createTeam` = project + owner + member + outsider, `createTask`, `createSubtask`).
+- Decorators/DI work under vitest with Vite 8 as configured; no SWC plugin was needed.
+- The suite was checked with mutations (inverting the board order, removing the 409 rule, allowing the owner to be removed, skipping the user check in `JwtStrategy`): each made exactly the relevant test fail. When adding a rule, prefer a test that would fail if the rule were removed.
+- Not covered: concurrent requests, forced mid-transaction failures through the API (the rollback itself was checked once directly against Prisma), and load.
 
 ### Prisma schema decisions
 
