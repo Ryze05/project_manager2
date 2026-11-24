@@ -15,6 +15,7 @@ import {
 import projectStyles from "../../../projects.module.css";
 import { deleteTaskAction } from "../../actions";
 import { Comments } from "./comments/Comments";
+import { CloseTaskHint } from "./CloseTaskHint";
 import { NewSubtaskButton } from "./NewSubtaskButton";
 import { StatusSelect } from "./StatusSelect";
 import styles from "./task.module.css";
@@ -108,6 +109,9 @@ export default async function TaskPage({
               </span>
             </div>
             <ProgressBar done={task.subtaskProgress.done} total={task.subtaskProgress.total} label=" " />
+            {task.subtaskProgress.total > 0 &&
+              task.subtaskProgress.done === task.subtaskProgress.total &&
+              task.status !== "DONE" && <CloseTaskHint projectId={projectId} taskId={taskId} />}
             <ul className={styles.list}>
               {subtasks.map((subtask) => (
                 <li key={subtask.id} className={subtask.status === "DONE" ? styles.isDone : undefined}>
