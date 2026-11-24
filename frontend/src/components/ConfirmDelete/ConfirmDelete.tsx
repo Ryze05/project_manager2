@@ -2,30 +2,31 @@
 
 import { useRef, useTransition } from "react";
 import { Button } from "@/components/ui";
-import styles from "../../projects.module.css";
+import styles from "./ConfirmDelete.module.css";
 
-/** Asks for confirmation in a native modal dialog before running the delete action. */
-export function DeleteProjectButton({
-  action,
-  projectName,
-}: {
+type Props = {
+  /** Server Action (already bound to its ids) that deletes and redirects. */
   action: () => Promise<void>;
-  projectName: string;
-}) {
+  /** Label of the button that opens the dialog. */
+  label: string;
+  title: string;
+  description: string;
+};
+
+/** Danger button that asks for confirmation in a native modal dialog before running `action`. */
+export function ConfirmDelete({ action, label, title, description }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [pending, startTransition] = useTransition();
 
   return (
     <>
       <Button variant="danger" onClick={() => dialog.current?.showModal()}>
-        Eliminar proyecto
+        {label}
       </Button>
       <dialog ref={dialog} className={styles.dialog}>
-        <h3>¿Eliminar «{projectName}»?</h3>
-        <p className={styles.dangerText}>
-          Se borrará con todo su contenido para todos los miembros.
-        </p>
-        <div className={styles.formActions}>
+        <h3>{title}</h3>
+        <p className={styles.text}>{description}</p>
+        <div className={styles.actions}>
           <Button variant="ghost" onClick={() => dialog.current?.close()} disabled={pending}>
             Cancelar
           </Button>

@@ -1,0 +1,209 @@
+.fields {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: center;
+  font-size: var(--fs-md);
+  margin: 0;
+}
+
+.fields dt {
+  color: var(--muted);
+}
+
+.fields dd {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+}
+
+.late {
+  color: var(--danger);
+  font-weight: var(--fw-bold);
+}
+
+.sectionLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: var(--fw-bold);
+  margin-bottom: var(--s2);
+}
+
+.description {
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.descriptionEmpty {
+  color: var(--faint);
+  font-style: italic;
+}
+
+.statusBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.statusSelect {
+  font-size: var(--fs-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: var(--r-full);
+  padding: 2px var(--s3);
+}
+
+.statusSelect:disabled {
+  opacity: 0.5;
+}
+
+.error {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+}
+
+.list > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.subtaskTitle {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--fw-medium);
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtaskTitle:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.isDone .subtaskTitle {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--faint);
+}
+
+.check {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  color: var(--on-accent);
+  line-height: 1;
+}
+
+.check:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.checkOn {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.checkOn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.check:disabled {
+  opacity: 0.5;
+}
+
+.addRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s3) 0 0;
+}
+
+/* The add row continues the list: a divider only when there are subtasks above. */
+.list:not(:empty) + .addRow {
+  border-top: 1px solid var(--line);
+}
+
+.addLine {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.plus {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  font-size: var(--fs-lg);
+  line-height: 1;
+}
+
+.addLine:focus-within .plus {
+  color: var(--accent);
+}
+
+.addInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-weight: var(--fw-medium);
+  outline: none;
+}
+
+.addInput::placeholder {
+  color: var(--faint);
+  font-weight: var(--fw-normal);
+}
+
+.parentLink {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s1);
+  }
+
+  .fields dd {
+    margin-bottom: var(--s3);
+  }
+}

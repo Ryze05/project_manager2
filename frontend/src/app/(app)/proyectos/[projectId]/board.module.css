@@ -41,6 +41,7 @@
 }
 
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -50,10 +51,34 @@
   gap: var(--s3);
 }
 
+.card:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+
 .title {
   font-weight: var(--fw-medium);
   line-height: 1.35;
   overflow-wrap: anywhere;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The link stretches over the whole card, so the card itself is the click target. */
+.title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-md);
+}
+
+.title:focus-visible {
+  outline: none;
+}
+
+.title:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .done .title {
@@ -85,6 +110,13 @@
   color: var(--faint);
   font-size: var(--fs-md);
   padding: var(--s4) 0;
+}
+
+/* Above the stretched link, so the menu stays usable. */
+.move,
+.moveError {
+  position: relative;
+  z-index: 1;
 }
 
 .move {

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
 import { Card } from "@/components/ui";
 import { api, unwrap } from "@/lib/api";
 import type { ProjectView } from "@/lib/types";
 import { deleteProjectAction, updateProjectAction } from "../../actions";
 import { ProjectForm } from "../../ProjectForm";
 import styles from "../../projects.module.css";
-import { DeleteProjectButton } from "./DeleteProjectButton";
 
 export const metadata = { title: "Editar proyecto · Gestor de proyectos" };
 
@@ -41,9 +41,11 @@ export default async function EditProjectPage({
           <p className={styles.dangerText}>
             Se borrarán también sus tareas, subtareas y comentarios. No se puede deshacer.
           </p>
-          <DeleteProjectButton
+          <ConfirmDelete
             action={deleteProjectAction.bind(null, projectId)}
-            projectName={project.name}
+            label="Eliminar proyecto"
+            title={`¿Eliminar «${project.name}»?`}
+            description="Se borrará con todo su contenido para todos los miembros."
           />
         </Card>
       </div>

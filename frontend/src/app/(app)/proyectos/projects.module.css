@@ -183,20 +183,6 @@
   margin: var(--s1) 0 var(--s4);
 }
 
-.dialog {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  padding: var(--card-pad);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  width: min(420px, calc(100% - 2 * var(--s4)));
-}
-
-.dialog::backdrop {
-  background: rgb(30 26 43 / 25%);
-}
-
 .cardHead {
   display: flex;
   justify-content: space-between;

@@ -4,18 +4,23 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Button, Input, Select, Textarea } from "@/components/ui";
 import type { MemberView } from "@/lib/types";
-import { type TaskFormState } from "../../actions";
-import styles from "../../../projects.module.css";
+import { type TaskFormState } from "../actions";
+import styles from "../../projects.module.css";
 
 type Props = {
   action: (state: TaskFormState, formData: FormData) => Promise<TaskFormState>;
   members: MemberView[];
   cancelHref: string;
+  submitLabel: string;
+  pendingLabel: string;
+  /** Current values when editing. */
+  initial?: NonNullable<TaskFormState["values"]>;
 };
 
-export function TaskForm({ action, members, cancelHref }: Props) {
+/** Fields shared by "new task" and "edit task". */
+export function TaskForm({ action, members, cancelHref, submitLabel, pendingLabel, initial }: Props) {
   const [state, formAction, pending] = useActionState(action, {} as TaskFormState);
-  const values = state.values;
+  const values = state.values ?? initial;
 
   return (
     <form action={formAction} className={styles.form} noValidate>
@@ -50,11 +55,7 @@ export function TaskForm({ action, members, cancelHref }: Props) {
           defaultValue={values?.dueDate}
         />
       </div>
-      <Select
-        name="assigneeId"
-        label="Responsable"
-        defaultValue={values?.assigneeId ?? ""}
-      >
+      <Select name="assigneeId" label="Responsable" defaultValue={values?.assigneeId ?? ""}>
         <option value="">Sin responsable</option>
         {members.map((member) => (
           <option key={member.id} value={member.id}>
@@ -72,7 +73,7 @@ export function TaskForm({ action, members, cancelHref }: Props) {
           Cancelar
         </Link>
         <Button type="submit" disabled={pending}>
-          {pending ? "Creando…" : "Crear tarea"}
+          {pending ? pendingLabel : submitLabel}
         </Button>
       </div>
     </form>

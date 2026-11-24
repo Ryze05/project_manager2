@@ -80,3 +80,95 @@ export async function moveTaskAction(
   revalidatePath(`/proyectos/${projectId}`);
   return {};
 }
+
+function taskInput(formData: FormData) {
+  return {
+    title: text(formData, "title"),
+    description: text(formData, "description"),
+    priority: text(formData, "priority") || "MEDIUM",
+    dueDate: text(formData, "dueDate"),
+    assigneeId: text(formData, "assigneeId"),
+  };
+}
+
+export async function updateTaskAction(
+  projectId: string,
+  taskId: string,
+  _prev: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  const values = taskInput(formData);
+  const parsed = taskSchema.safeParse(values);
+  if (!parsed.success) {
+    const flat = z.flattenError(parsed.error).fieldErrors as Record<string, string[]>;
+    return {
+      errors: { title: flat.title?.[0], description: flat.description?.[0] },
+      values,
+    };
+  }
+
+  const { title, description, priority, dueDate, assigneeId } = parsed.data;
+  const result = await api<TaskView>(`/projects/${projectId}/tasks/${taskId}`, {
+    method: "PATCH",
+    body: {
+      title,
+      priority,
+      // `null` clears a field; omitting it would keep the old value.
+      description: description || null,
+      dueDate: dueDate || null,
+      assigneeId: assigneeId || null,
+    },
+  });
+  if (!result.ok) {
+    if (result.status === 401) redirect("/sesion-caducada");
+    return { message: result.message, values };
+  }
+
+  revalidatePath(`/proyectos/${projectId}`, "layout");
+  redirect(`/proyectos/${projectId}/tareas/${taskId}`);
+}
+
+/** Deletes a task (cascades to its subtasks and comments) or a subtask, then goes back. */
+export async function deleteTaskAction(
+  projectId: string,
+  taskId: string,
+  parentId: string | null,
+): Promise<void> {
+  const result = await api(`/projects/${projectId}/tasks/${taskId}`, { method: "DELETE" });
+  if (!result.ok) {
+    if (result.status === 401) redirect("/sesion-caducada");
+    throw new Error(result.message);
+  }
+  revalidatePath(`/proyectos/${projectId}`, "layout");
+  redirect(parentId ? `/proyectos/${projectId}/tareas/${parentId}` : `/proyectos/${projectId}`);
+}
+
+export interface SubtaskFormState {
+  error?: string;
+  title?: string;
+  /** Changes on every successful add, so the form can clear itself. */
+  added?: number;
+}
+
+export async function createSubtaskAction(
+  projectId: string,
+  parentId: string,
+  _prev: SubtaskFormState,
+  formData: FormData,
+): Promise<SubtaskFormState> {
+  const title = text(formData, "title").trim();
+  if (!title) return { error: "Escribe un título", title };
+  if (title.length > 200) return { error: "Máximo 200 caracteres", title };
+
+  const result = await api(`/projects/${projectId}/tasks/${parentId}/subtasks`, {
+    method: "POST",
+    body: { title },
+  });
+  if (!result.ok) {
+    if (result.status === 401) redirect("/sesion-caducada");
+    return { error: result.message, title };
+  }
+  // Creating a subtask under a done parent reopens it, so refresh the board too.
+  revalidatePath(`/proyectos/${projectId}`, "layout");
+  return { added: Date.now() };
+}

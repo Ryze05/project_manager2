@@ -4,7 +4,7 @@ import { api, unwrap } from "@/lib/api";
 import type { MemberView, ProjectView } from "@/lib/types";
 import styles from "../../../projects.module.css";
 import { createTaskAction } from "../../actions";
-import { TaskForm } from "./TaskForm";
+import { TaskForm } from "../TaskForm";
 
 export const metadata = { title: "Nueva tarea · Gestor de proyectos" };
 
@@ -30,6 +30,8 @@ export default async function NewTaskPage({
           action={createTaskAction.bind(null, projectId)}
           members={members}
           cancelHref={`/proyectos/${projectId}`}
+          submitLabel="Crear tarea"
+          pendingLabel="Creando…"
         />
       </Card>
     </div>

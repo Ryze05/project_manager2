@@ -1,14 +1,10 @@
-import { Avatar, Badge, ProgressBar } from "@/components/ui";
+import Link from "next/link";
+import { PriorityBadge } from "@/components/PriorityBadge";
+import { Avatar, ProgressBar } from "@/components/ui";
 import { formatDueDate, isOverdue } from "@/lib/format";
-import type { TaskPriority, TaskView } from "@/lib/types";
+import type { TaskView } from "@/lib/types";
 import styles from "./board.module.css";
 import { MoveSelect } from "./MoveSelect";
-
-const PRIORITY: Record<TaskPriority, { label: string; tone: "danger" | "neutral" | "outline" }> = {
-  HIGH: { label: "Alta", tone: "danger" },
-  MEDIUM: { label: "Media", tone: "neutral" },
-  LOW: { label: "Baja", tone: "outline" },
-};
 
 export function TaskCard({
   task,
@@ -18,16 +14,15 @@ export function TaskCard({
   currentUserId: string;
 }) {
   const done = task.status === "DONE";
-  const priority = PRIORITY[task.priority];
   const late = !done && task.dueDate !== null && isOverdue(task.dueDate);
 
   return (
     <li className={[styles.card, done && styles.done].filter(Boolean).join(" ")}>
-      <span className={styles.title}>{task.title}</span>
+      <Link href={`/proyectos/${task.projectId}/tareas/${task.id}`} className={styles.title}>
+        {task.title}
+      </Link>
       <div className={styles.row}>
-        <Badge tone={priority.tone} dot>
-          {priority.label}
-        </Badge>
+        <PriorityBadge priority={task.priority} />
         <span className={late ? styles.late : styles.small}>
           {task.dueDate ? formatDueDate(task.dueDate) : "Sin fecha"}
         </span>
