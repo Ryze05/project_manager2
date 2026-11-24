@@ -1,4 +1,4 @@
-import { Avatar, Badge, Button, Card, Input, ProgressBar } from "@/components/ui";
+import { Avatar, Badge, Button, Card, Input, PasswordInput, ProgressBar } from "@/components/ui";
 import styles from "./page.module.css";
 
 /** Temporary page to see the base components together. Removed once real screens exist. */
@@ -34,9 +34,8 @@ export default function Componentes() {
         <ProgressBar done={2} total={3} />
         <h3>Campos</h3>
         <Input label="Correo electrónico" placeholder="marta@ejemplo.com" />
-        <Input
+        <PasswordInput
           label="Contraseña"
-          type="password"
           hint="Mínimo 8 caracteres, con una mayúscula y un número"
         />
         <Input label="Con error" defaultValue="abc" error="La contraseña es demasiado corta" />

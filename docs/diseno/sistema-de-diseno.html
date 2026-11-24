@@ -136,6 +136,10 @@
   .input { width: 100%; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: var(--s3); background: var(--surface); }
   .input::placeholder { color: var(--faint); }
   .input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .pw { position: relative; }
+  .pw .input { padding-right: calc(var(--s6) + var(--s3)); }
+  .pw .eye { position: absolute; top: 50%; right: var(--s2); transform: translateY(-50%); display: grid; place-items: center; width: var(--s6); height: var(--s6); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--muted); }
+  .pw .eye:hover { background: var(--accent-soft); color: var(--accent); }
   .search { width: 240px; border-radius: var(--r-full); padding: var(--s2) var(--s4); }
   .select { font-size: var(--fs-xs); color: var(--muted); border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-full); padding: 2px var(--s3); }
   .avatars { display: flex; }
@@ -353,7 +357,7 @@
         <div class="logo"><span class="logo-mark">N</span> Nombre</div>
         <div><h2>Inicia sesión</h2><p class="muted" style="margin-top:var(--s1)">Entra para ver tus proyectos y tareas.</p></div>
         <label class="field">Correo electrónico<input class="input" placeholder="marta@ejemplo.com"></label>
-        <label class="field">Contraseña<input class="input" type="password" placeholder="••••••••"><span class="hint">Mínimo 8 caracteres, con una mayúscula y un número</span></label>
+        <label class="field">Contraseña<span class="pw"><input class="input" type="password" placeholder="••••••••"><button class="eye" type="button" aria-label="Mostrar contraseña" title="Mostrar contraseña"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></span><span class="hint">Mínimo 8 caracteres, con una mayúscula y un número</span></label>
         <button class="btn btn--block">Entrar</button>
         <p class="muted" style="text-align:center">¿No tienes cuenta? <button class="link" style="font-size:var(--fs-md)">Regístrate</button></p>
       </article>
