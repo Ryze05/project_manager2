@@ -1,4 +1,5 @@
 import "server-only";
+import { notFound, redirect } from "next/navigation";
 import { getToken } from "./session";
 
 export type ApiResult<T> =
@@ -70,4 +71,17 @@ export async function api<T = unknown>(
     };
   }
   return { ok: true, status: response.status, data: payload as T };
+}
+
+/**
+ * For Server Components: returns the data or leaves the page. An expired
+ * token goes through `/sesion-caducada` (Server Components cannot delete
+ * cookies), a 404 shows the not-found page, anything else reaches the error
+ * boundary.
+ */
+export async function unwrap<T>(result: ApiResult<T>): Promise<T> {
+  if (result.ok) return result.data;
+  if (result.status === 401) redirect("/sesion-caducada");
+  if (result.status === 404) notFound();
+  throw new Error(result.message);
 }

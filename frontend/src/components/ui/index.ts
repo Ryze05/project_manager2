@@ -5,3 +5,4 @@ export { Card } from "./Card";
 export { Input } from "./Input";
 export { PasswordInput } from "./PasswordInput";
 export { ProgressBar } from "./ProgressBar";
+export { Textarea } from "./Textarea";
