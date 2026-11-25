@@ -39,6 +39,7 @@ Un proyecto individual es simplemente uno con un solo miembro, así que no exist
 
 - Rol de solo lectura
 - Notificaciones dentro de la aplicación
+- Envío de correos electrónicos, empezando por avisar a quien recibe una invitación a un proyecto
 - Actualización del tablero en tiempo real
 - Adjuntos en las tareas
 - Docker Compose y pruebas end-to-end
@@ -57,6 +58,13 @@ Hay dos roles dentro de cada proyecto, propietario y miembro. Quien no es miembr
 | Borrar un comentario | Cualquiera | Solo el suyo |
 | Añadir o quitar miembros | Sí | No |
 | Editar o borrar el proyecto | Sí | No |
+| Crear etiquetas (nivel 2) | Sí | Sí |
+| Renombrar o borrar etiquetas (nivel 2) | Sí | No |
+| Ver el historial de actividad (nivel 2) | Sí | Sí |
+| Archivar y desarchivar el proyecto (nivel 2) | Sí | No |
+| Promover o degradar propietarios (nivel 2) | Sí | No |
+| Invitar a alguien y cancelar invitaciones (nivel 2) | Sí | No |
+| Dejar el proyecto (nivel 2) | Sí, si queda otro propietario | Sí |
 
 ## Reglas de negocio
 
@@ -113,11 +121,60 @@ Ejemplo con un equipo que prepara una app de gestión de entrenamientos. Marta c
 
 - **Login y registro:** formularios sencillos; sin sesión, el resto de rutas redirige al login.
 - **Proyectos:** tarjetas con el nombre, el rol del usuario y el número de miembros, más un botón para crear un proyecto.
-- **Tablero del proyecto:** tres columnas por estado; cada tarjeta muestra título, prioridad, fecha límite, responsable y progreso de subtareas. Las subtareas no aparecen como tarjetas, solo dentro de su tarea padre. Las tarjetas se ordenan por prioridad y, a igual prioridad, por fecha límite.
-- **Detalle de tarea:** panel lateral o modal con los campos editables, la lista de subtareas y el hilo de comentarios.
+- **Tablero del proyecto:** tres columnas por estado; cada tarjeta muestra título, prioridad, fecha límite, responsable y progreso de subtareas. Las subtareas no aparecen como tarjetas, solo dentro de su tarea padre. En el nivel 1 las tarjetas se ordenan por prioridad y, a igual prioridad, por fecha límite; en el nivel 2 el orden pasa a ser manual (ver "Decisiones del nivel 2").
+- **Detalle de tarea:** pantalla propia (se descartó el panel lateral o el modal: más sencilla, funciona en móvil y deja sitio a los comentarios) con los campos editables, la lista de subtareas y el hilo de comentarios.
 - **Detalle de subtarea:** igual que una tarea, con un enlace para volver a la tarea padre.
-- **Miembros:** lista con roles, campo de email para añadir y botón de quitar (solo para el propietario).
+- **Miembros:** lista con roles, campo de email para invitar (antes, en el nivel 1, para añadir directamente) y botón de quitar (solo para el propietario).
 - **Mis tareas:** lista ordenada por fecha límite que indica el proyecto y, si es subtarea, su tarea padre. Por defecto solo muestra pendientes y en curso.
+
+## Decisiones del nivel 2
+
+Lo ya construido del nivel 2, con las decisiones que se tomaron. Donde choque con el nivel 1, manda esto.
+
+### Etiquetas y filtros
+
+- Las etiquetas pertenecen a un proyecto (no hay etiquetas globales) y no tienen color: el sistema de diseño solo tiene un acento. El nombre es único dentro del proyecto sin distinguir mayúsculas ("Bug" y "bug" son la misma).
+- Las llevan las tareas, no las subtareas, y una tarea puede tener varias. Cualquier miembro las crea (también al etiquetar una tarea); renombrarlas o borrarlas es solo del propietario. Borrar una etiqueta solo la quita de las tareas.
+- Filtros del tablero: etiqueta, responsable, prioridad y fecha límite (vencidas, próximos 7 días, sin fecha). Filtros distintos se combinan con Y; varios valores del mismo filtro (dos etiquetas, dos prioridades), con O. Filtrar por una persona incluye también las tareas que tienen una subtarea suya, y la tarjeta lo indica. El estado de los filtros vive en la URL.
+- Mejoras futuras anotadas, no decididas: color con una paleta corta y un juego inicial de etiquetas al crear el proyecto.
+
+### Historial de actividad
+
+- Cada proyecto guarda un historial: quién hizo qué y cuándo. Lo ve cualquier miembro, del más reciente al más antiguo y con paginación, con un filtro por persona; cada tarea y subtarea muestra además el suyo.
+- Un evento por campo cambiado (título, descripción, estado, prioridad, fecha, responsable, cada etiqueta añadida o quitada), más crear y borrar tareas y subtareas, los comentarios nuevos y los miembros añadidos o quitados. No se copia el texto de los comentarios ni de la descripción.
+- El rastro de una tarea borrada se conserva (con su título); solo desaparece al borrar el proyecto.
+- El historial de una tarea padre incluye cuándo se crean y se completan sus subtareas; el resto de lo que pasa en una subtarea queda en la suya.
+- No se registran: editar o borrar comentarios, cambios en las etiquetas en sí, cambios del proyecto, ni reordenar tarjetas dentro de una columna.
+
+### Arrastrar y soltar
+
+- Cada tarea guarda su posición en la columna. El orden manual sustituye al orden por prioridad y fecha, que pasan a ser datos informativos de la tarjeta.
+- Una tarea nueva, o la que cambia de columna sin arrastrar (menú, detalle), va al final de la columna.
+- Mover a "hecha" una tarea con subtareas pendientes se rechaza igual que desde cualquier otro sitio, y la tarjeta vuelve a su sitio. Las subtareas no se ordenan en el tablero.
+- Con filtros activos y en pantallas estrechas el arrastre se desactiva; en las estrechas se usa el menú "Mover a…" de cada tarjeta.
+
+### Archivar proyectos
+
+- Solo el propietario archiva y desarchiva. Un proyecto archivado pasa a la pestaña «Archivados» de la lista, no sale en la barra lateral y queda en solo lectura: cualquier cambio (tareas, subtareas, mover, comentarios, etiquetas, miembros, invitaciones, editar el proyecto, dejarlo) se rechaza hasta desarchivarlo. Se puede consultar todo, desarchivar y borrar el proyecto.
+- Las tareas de un proyecto archivado no salen en «Mis tareas» ni cuentan en el contador de la barra lateral. Sus invitaciones pendientes tampoco aparecen en la bandeja, y no se pueden aceptar mientras esté archivado.
+- El aviso de archivado del tablero lleva el botón «Desarchivar» para el propietario.
+
+### Varios propietarios
+
+- Un solo mecanismo cubre «varios propietarios» y «traspaso»: un propietario promueve a un miembro y, si quiere irse, se degrada o deja el proyecto. Todos los propietarios son iguales y cualquiera puede promover o degradar a otro (también a sí mismo, con confirmación).
+- Siempre queda al menos un propietario: el último no puede degradarse ni dejar el proyecto. A un propietario no se le puede quitar directamente: primero se le degrada.
+- Cualquier miembro puede dejar el proyecto: sus tareas quedan sin responsable y sus comentarios se conservan. Todo queda en el historial. Se descartó un rol por encima del propietario (los roles extra están fuera del alcance).
+
+### Invitaciones
+
+- Sustituyen al añadir directo (el nivel 1 metía a la persona sin preguntarle): nadie entra a un proyecto sin aceptar. Solo se invita a usuarios ya registrados, por email, y solo lo hace el propietario. No caducan.
+- El invitado las ve en una bandeja dentro de la aplicación (con contador en la barra lateral) y las acepta o rechaza; el propietario ve las pendientes en la pantalla de miembros y puede cancelarlas. Aceptar queda en el historial; enviar, rechazar o cancelar, no.
+- No se envía ningún correo: el invitado solo se entera si entra en la aplicación. El envío de correo es un extra del nivel 3.
+
+### Otros
+
+- Mis tareas sigue siendo una lista plana ordenada por fecha: las subtareas llevan una marca y el enlace a su tarea padre, y las tareas con subtareas muestran su progreso.
+- El cierre de la tarea padre sigue siendo manual; el detalle solo avisa cuando todas sus subtareas están hechas y ofrece el botón para cerrarla.
 
 ## Tecnologías y orden de construcción
 
