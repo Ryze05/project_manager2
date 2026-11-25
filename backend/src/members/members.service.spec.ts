@@ -15,6 +15,7 @@ describe('MembersService', () => {
   const del = vi.fn();
   const updateMany = vi.fn();
   const createMany = vi.fn();
+  const projectFindUnique = vi.fn();
   const transaction = vi.fn();
   const findByEmail = vi.fn();
 
@@ -22,6 +23,7 @@ describe('MembersService', () => {
     {
       projectMember: { findUnique, findMany, create, delete: del },
       task: { updateMany },
+      project: { findUnique: projectFindUnique },
       $transaction: transaction,
     } as unknown as PrismaService,
     { findByEmail } as unknown as UsersService,
@@ -43,6 +45,7 @@ describe('MembersService', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    projectFindUnique.mockResolvedValue({ archivedAt: null });
     transaction.mockImplementation(async (fn: (client: typeof tx) => unknown) =>
       fn(tx),
     );
@@ -62,6 +65,38 @@ describe('MembersService', () => {
       await expect(service.requireMember('p1', 'x')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('requireWritableMember / requireWritableOwner', () => {
+    it('refuses with 409 when the project is archived', async () => {
+      findUnique.mockResolvedValue(owner);
+      projectFindUnique.mockResolvedValue({ archivedAt: new Date() });
+      await expect(
+        service.requireWritableMember('p1', 'owner'),
+      ).rejects.toThrow(ConflictException);
+      await expect(service.requireWritableOwner('p1', 'owner')).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('lets an active project through', async () => {
+      findUnique.mockResolvedValue(member);
+      await expect(service.requireWritableMember('p1', 'member')).resolves.toBe(
+        member,
+      );
+    });
+
+    it('keeps 404 for outsiders and 403 for members before the archive check', async () => {
+      projectFindUnique.mockResolvedValue({ archivedAt: new Date() });
+      findUnique.mockResolvedValue(null);
+      await expect(service.requireWritableMember('p1', 'x')).rejects.toThrow(
+        NotFoundException,
+      );
+      findUnique.mockResolvedValue(member);
+      await expect(
+        service.requireWritableOwner('p1', 'member'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

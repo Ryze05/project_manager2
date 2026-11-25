@@ -59,6 +59,29 @@ export class ProjectsController {
     return this.projects.update(id, user.id, dto);
   }
 
+  @Post(':id/archive')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Archivar un proyecto: solo lectura hasta desarchivar (propietario)',
+  })
+  archive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<ProjectView> {
+    return this.projects.archive(id, user.id);
+  }
+
+  @Post(':id/unarchive')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Desarchivar un proyecto (propietario)' })
+  unarchive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<ProjectView> {
+    return this.projects.unarchive(id, user.id);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Borrar un proyecto (solo propietario)' })

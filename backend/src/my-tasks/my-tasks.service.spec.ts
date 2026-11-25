@@ -32,12 +32,15 @@ describe('MyTasksService', () => {
     findMany.mockResolvedValue([]);
   });
 
-  it('asks only for my tasks, in projects where I am still a member', async () => {
+  it('asks only for my tasks, in active projects where I am still a member', async () => {
     await service.list('u1');
 
     const { where } = findMany.mock.calls[0][0];
     expect(where.assigneeId).toBe('u1');
-    expect(where.project).toEqual({ members: { some: { userId: 'u1' } } });
+    expect(where.project).toEqual({
+      archivedAt: null,
+      members: { some: { userId: 'u1' } },
+    });
   });
 
   it('hides done tasks by default and shows them with includeDone', async () => {

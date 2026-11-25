@@ -53,7 +53,7 @@ export class LabelsService {
     userId: string,
     dto: LabelDto,
   ): Promise<LabelView> {
-    await this.members.requireMember(projectId, userId);
+    await this.members.requireWritableMember(projectId, userId);
     await this.assertNameFree(projectId, dto.name);
     const label = await this.prisma.label.create({
       data: { projectId, name: dto.name },
@@ -68,7 +68,7 @@ export class LabelsService {
     userId: string,
     dto: LabelDto,
   ): Promise<LabelView> {
-    await this.members.requireOwner(projectId, userId);
+    await this.members.requireWritableOwner(projectId, userId);
     await this.getLabel(projectId, labelId);
     await this.assertNameFree(projectId, dto.name, labelId);
     const label = await this.prisma.label.update({
@@ -84,7 +84,7 @@ export class LabelsService {
     labelId: string,
     userId: string,
   ): Promise<void> {
-    await this.members.requireOwner(projectId, userId);
+    await this.members.requireWritableOwner(projectId, userId);
     await this.getLabel(projectId, labelId);
     await this.prisma.label.delete({ where: { id: labelId } });
   }

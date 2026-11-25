@@ -22,7 +22,7 @@ export class MyTasksService {
 
   /**
    * Tasks and subtasks assigned to the user, in projects where they are still
-   * a member. Pending and in-progress by default; `includeDone` adds the done
+   * a member and that are not archived. Pending and in-progress by default; `includeDone` adds the done
    * ones. Earliest due date first (none last), then highest priority, then
    * oldest.
    */
@@ -30,7 +30,7 @@ export class MyTasksService {
     const tasks = await this.prisma.task.findMany({
       where: {
         assigneeId: userId,
-        project: { members: { some: { userId } } },
+        project: { archivedAt: null, members: { some: { userId } } },
         ...(includeDone ? {} : { status: { not: TaskStatus.DONE } }),
       },
       include: myTaskInclude,

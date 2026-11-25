@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui";
 import { getLabels, getMembers, getProject } from "@/lib/queries";
 import styles from "../../../projects.module.css";
@@ -16,6 +17,8 @@ export default async function NewTaskPage({
     getMembers(projectId),
     getLabels(projectId),
   ]);
+
+  if (project.archivedAt) redirect(`/proyectos/${projectId}`);
 
   return (
     <div className={styles.formPage}>

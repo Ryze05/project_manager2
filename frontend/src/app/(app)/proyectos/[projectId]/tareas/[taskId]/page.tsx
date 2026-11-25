@@ -26,6 +26,8 @@ import styles from "./task.module.css";
 
 const HISTORY_PAGE = 10;
 
+const STATUS_LABEL = { TODO: "Por hacer", IN_PROGRESS: "En curso", DONE: "Hecha" } as const;
+
 /** Detail of a task or a subtask (both are the same entity in the API). */
 export default async function TaskPage({
   params,
@@ -45,7 +47,9 @@ export default async function TaskPage({
   const isSubtask = task.parentId !== null;
   const parent = task.parentId ? await getTask(projectId, task.parentId) : null;
 
-  const canDelete = project.role === "OWNER" || task.creatorId === me.id;
+  // An archived project is read-only: no editing, checking, commenting or deleting.
+  const readOnly = project.archivedAt !== null;
+  const canDelete = !readOnly && (project.role === "OWNER" || task.creatorId === me.id);
   const late = task.status !== "DONE" && task.dueDate !== null && isOverdue(task.dueDate);
   const taskPath = `/proyectos/${projectId}/tareas`;
 
@@ -65,9 +69,11 @@ export default async function TaskPage({
           </p>
           <h1>{task.title}</h1>
         </div>
-        <ButtonLink href={`${taskPath}/${taskId}/editar`} variant="ghost">
-          Editar
-        </ButtonLink>
+        {!readOnly && (
+          <ButtonLink href={`${taskPath}/${taskId}/editar`} variant="ghost">
+            Editar
+          </ButtonLink>
+        )}
       </header>
 
       <div className={projectStyles.stack}>
@@ -75,7 +81,11 @@ export default async function TaskPage({
           <dl className={styles.fields}>
             <dt>Estado</dt>
             <dd>
-              <StatusSelect projectId={projectId} taskId={taskId} status={task.status} />
+              {readOnly ? (
+                STATUS_LABEL[task.status]
+              ) : (
+                <StatusSelect projectId={projectId} taskId={taskId} status={task.status} />
+              )}
             </dd>
             <dt>Prioridad</dt>
             <dd>
@@ -124,15 +134,22 @@ export default async function TaskPage({
             <ProgressBar done={task.subtaskProgress.done} total={task.subtaskProgress.total} label=" " />
             {task.subtaskProgress.total > 0 &&
               task.subtaskProgress.done === task.subtaskProgress.total &&
-              task.status !== "DONE" && <CloseTaskHint projectId={projectId} taskId={taskId} />}
+              task.status !== "DONE" &&
+              !readOnly && <CloseTaskHint projectId={projectId} taskId={taskId} />}
             <ul className={styles.list}>
               {subtasks.map((subtask) => (
                 <li key={subtask.id} className={subtask.status === "DONE" ? styles.isDone : undefined}>
-                  <TaskCheck
-                    projectId={projectId}
-                    taskId={subtask.id}
-                    done={subtask.status === "DONE"}
-                  />
+                  {readOnly ? (
+                    <span aria-label={subtask.status === "DONE" ? "Hecha" : "Pendiente"}>
+                      {subtask.status === "DONE" ? "✓" : "○"}
+                    </span>
+                  ) : (
+                    <TaskCheck
+                      projectId={projectId}
+                      taskId={subtask.id}
+                      done={subtask.status === "DONE"}
+                    />
+                  )}
                   <Link href={`${taskPath}/${subtask.id}`} className={styles.subtaskTitle}>
                     {subtask.title}
                   </Link>
@@ -144,7 +161,9 @@ export default async function TaskPage({
                 </li>
               ))}
             </ul>
-            <NewSubtaskButton projectId={projectId} parentId={taskId} members={members} />
+            {!readOnly && (
+              <NewSubtaskButton projectId={projectId} parentId={taskId} members={members} />
+            )}
           </Card>
         )}
 
@@ -154,6 +173,7 @@ export default async function TaskPage({
           taskId={taskId}
           currentUserId={me.id}
           isOwner={project.role === "OWNER"}
+          readOnly={readOnly}
         />
 
         <Card>

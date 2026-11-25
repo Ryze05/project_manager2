@@ -13,7 +13,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className={styles.app}>
-      <Sidebar user={user} projects={projects} pendingCount={pending.length} />
+      <Sidebar user={user} // Archived projects live in their own tab, not in the sidebar.
+      projects={projects.filter((project) => !project.archivedAt)} pendingCount={pending.length} />
       <main className={styles.main}>{children}</main>
     </div>
   );

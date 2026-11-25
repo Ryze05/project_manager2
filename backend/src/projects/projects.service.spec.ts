@@ -18,7 +18,11 @@ describe('ProjectsService', () => {
       project: { create, findUnique, update, delete: del },
       projectMember: { findMany },
     } as unknown as PrismaService,
-    { requireMember, requireOwner } as unknown as MembersService,
+    {
+      requireMember,
+      requireOwner,
+      requireWritableOwner: requireOwner,
+    } as unknown as MembersService,
   );
 
   const createdAt = new Date('2026-01-01');

@@ -136,10 +136,13 @@ export function BoardColumns({
   projectId,
   cards,
   filtered,
+  readOnly = false,
 }: {
   projectId: string;
   cards: BoardCard[];
   filtered: boolean;
+  /** Archived project: nothing can be dragged. */
+  readOnly?: boolean;
 }) {
   const byId = new Map(cards.map((c) => [c.id, c]));
   const fromServer = orderOf(cards);
@@ -154,7 +157,7 @@ export function BoardColumns({
   const [error, setError] = useState<string>();
   const justDragged = useRef(false);
   const narrow = useNarrow();
-  const draggable = !filtered && !narrow;
+  const draggable = !filtered && !narrow && !readOnly;
 
   // Safety net: if the pointer moves with no button held while a drag is on (its
   // "release" never arrived, e.g. it was swallowed by a native menu), cancel the
@@ -245,7 +248,7 @@ export function BoardColumns({
 
   return (
     <>
-      {filtered && !narrow && (
+      {filtered && !narrow && !readOnly && (
         <p className={styles.dragHint}>Arrastrar está desactivado mientras haya filtros activos.</p>
       )}
       {error && (

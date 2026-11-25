@@ -16,10 +16,12 @@ type Props = {
   isMine: boolean;
   /** Author or project owner. */
   canDelete: boolean;
+  /** Archived project: no edit or delete. */
+  readOnly?: boolean;
 };
 
 /** One comment: edit it in place (author only) or delete it (author or owner). */
-export function CommentItem({ projectId, taskId, comment, when, isMine, canDelete }: Props) {
+export function CommentItem({ projectId, taskId, comment, when, isMine, canDelete, readOnly = false }: Props) {
   const [editing, setEditing] = useState(false);
 
   return (
@@ -46,7 +48,7 @@ export function CommentItem({ projectId, taskId, comment, when, isMine, canDelet
           <p className={styles.content}>{comment.content}</p>
         )}
 
-        {!editing && (isMine || canDelete) && (
+        {!editing && !readOnly && (isMine || canDelete) && (
           <div className={styles.tools}>
             {isMine && (
               <Button variant="link" onClick={() => setEditing(true)}>

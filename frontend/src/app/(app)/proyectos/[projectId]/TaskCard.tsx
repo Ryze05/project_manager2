@@ -11,11 +11,14 @@ export function TaskCard({
   task,
   currentUserId,
   viaSubtaskOf,
+  readOnly = false,
 }: {
   task: TaskView;
   currentUserId: string;
   /** Name of the person the board is filtered by, when this card only matches through one of its subtasks. */
   viaSubtaskOf?: string;
+  /** Archived project: no menu to move the card. */
+  readOnly?: boolean;
 }) {
   const done = task.status === "DONE";
   const late = !done && task.dueDate !== null && isOverdue(task.dueDate);
@@ -41,9 +44,11 @@ export function TaskCard({
       )}
       <div className={styles.row}>
         {/* Hidden while dragging is on (see board.module.css); the way to move cards on narrow screens. */}
-        <div className={styles.moveMenu}>
-          <MoveSelect projectId={task.projectId} taskId={task.id} status={task.status} />
-        </div>
+        {!readOnly && (
+          <div className={styles.moveMenu}>
+            <MoveSelect projectId={task.projectId} taskId={task.id} status={task.status} />
+          </div>
+        )}
         {task.assignee ? (
           <span title={task.assignee.name}>
             <Avatar name={task.assignee.name} me={task.assignee.id === currentUserId} />

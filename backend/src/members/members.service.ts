@@ -58,6 +58,41 @@ export class MembersService {
   }
 
   /**
+   * Like requireMember, but also refuses (409) when the project is archived:
+   * an archived project is read-only. Every write path uses this one.
+   */
+  async requireWritableMember(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMember> {
+    const membership = await this.requireMember(projectId, userId);
+    await this.assertNotArchived(projectId);
+    return membership;
+  }
+
+  /** Owner-only version of requireWritableMember (403 before 409). */
+  async requireWritableOwner(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMember> {
+    const membership = await this.requireOwner(projectId, userId);
+    await this.assertNotArchived(projectId);
+    return membership;
+  }
+
+  private async assertNotArchived(projectId: string): Promise<void> {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { archivedAt: true },
+    });
+    if (project?.archivedAt) {
+      throw new ConflictException(
+        'El proyecto está archivado: desarchívalo para hacer cambios',
+      );
+    }
+  }
+
+  /**
    * Non-throwing check, for validating a user id sent in a request body
    * (e.g. a task assignee). Callers decide which error to raise.
    */
@@ -84,7 +119,7 @@ export class MembersService {
     requesterId: string,
     email: string,
   ): Promise<MemberView> {
-    await this.requireOwner(projectId, requesterId);
+    await this.requireWritableOwner(projectId, requesterId);
 
     const user = await this.users.findByEmail(email);
     if (!user) {
@@ -122,7 +157,7 @@ export class MembersService {
     requesterId: string,
     targetUserId: string,
   ): Promise<void> {
-    await this.requireOwner(projectId, requesterId);
+    await this.requireWritableOwner(projectId, requesterId);
 
     const target = await this.prisma.projectMember.findUnique({
       where: { userId_projectId: { userId: targetUserId, projectId } },

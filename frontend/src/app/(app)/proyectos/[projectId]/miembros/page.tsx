@@ -16,7 +16,8 @@ export default async function MembersPage({
     getMembers(projectId),
     getMe(),
   ]);
-  const isOwner = project.role === "OWNER";
+  // Archived projects are read-only: nobody is added or removed.
+  const isOwner = project.role === "OWNER" && project.archivedAt === null;
 
   return (
     <div className={styles.page}>

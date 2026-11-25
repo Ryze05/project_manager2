@@ -3,6 +3,7 @@ import { Badge, ButtonLink } from "@/components/ui";
 import { hasFilters, parseFilters, toQuery } from "@/lib/board-filters";
 import { getBoard, getLabels, getMe, getMembers, getProject } from "@/lib/queries";
 import type { TaskStatus, TaskView } from "@/lib/types";
+import { ArchiveButton } from "../ArchiveButton";
 import styles from "../projects.module.css";
 import { BoardColumns } from "./BoardColumns";
 import { BoardFilters } from "./BoardFilters";
@@ -29,6 +30,7 @@ export default async function ProjectPage({
     getMembers(projectId),
   ]);
   const isOwner = project.role === "OWNER";
+  const readOnly = project.archivedAt !== null;
   // Filtering by a person also brings the tasks where only a subtask is theirs: say so on those cards.
   const filteredBy = members.find((m) => m.id === filters.assignee);
   const viaSubtask = (task: TaskView) =>
@@ -45,6 +47,7 @@ export default async function ProjectPage({
           <h1>{project.name}</h1>
         </div>
         <div className={styles.actions}>
+          {readOnly && <Badge tone="outline">Archivado</Badge>}
           <Badge tone={isOwner ? "accent" : "neutral"}>
             {isOwner ? "Propietario" : "Miembro"}
           </Badge>
@@ -59,21 +62,36 @@ export default async function ProjectPage({
               Editar
             </ButtonLink>
           )}
-          <ButtonLink href={`/proyectos/${projectId}/tareas/nueva`}>Nueva tarea</ButtonLink>
+          {!readOnly && (
+            <ButtonLink href={`/proyectos/${projectId}/tareas/nueva`}>Nueva tarea</ButtonLink>
+          )}
         </div>
       </header>
+
+      {readOnly && (
+        <div className={styles.archivedNote}>
+          <p>Este proyecto está archivado: solo se puede consultar.</p>
+          {isOwner && <ArchiveButton projectId={projectId} archived />}
+        </div>
+      )}
 
       <BoardFilters projectId={projectId} filters={filters} labels={labels} members={members} />
 
       <BoardColumns
         projectId={projectId}
         filtered={filtered}
+        readOnly={readOnly}
         cards={COLUMNS.flatMap(({ status }) =>
           board[status].map((task) => ({
             id: task.id,
             status,
             node: (
-              <TaskCard task={task} currentUserId={me.id} viaSubtaskOf={viaSubtask(task)} />
+              <TaskCard
+                task={task}
+                currentUserId={me.id}
+                viaSubtaskOf={viaSubtask(task)}
+                readOnly={readOnly}
+              />
             ),
           })),
         )}

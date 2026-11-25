@@ -60,7 +60,7 @@ export class CommentsService {
     userId: string,
     dto: CreateCommentDto,
   ): Promise<CommentView> {
-    await this.members.requireMember(projectId, userId);
+    await this.members.requireWritableMember(projectId, userId);
     const task = await this.assertTaskInProject(projectId, taskId);
 
     const comment = await this.prisma.$transaction(async (tx) => {
@@ -111,7 +111,7 @@ export class CommentsService {
     userId: string,
     dto: UpdateCommentDto,
   ): Promise<CommentView> {
-    await this.members.requireMember(projectId, userId);
+    await this.members.requireWritableMember(projectId, userId);
     await this.assertTaskInProject(projectId, taskId);
     const comment = await this.getComment(taskId, commentId);
 
@@ -134,7 +134,10 @@ export class CommentsService {
     commentId: string,
     userId: string,
   ): Promise<void> {
-    const membership = await this.members.requireMember(projectId, userId);
+    const membership = await this.members.requireWritableMember(
+      projectId,
+      userId,
+    );
     await this.assertTaskInProject(projectId, taskId);
     const comment = await this.getComment(taskId, commentId);
 

@@ -11,6 +11,8 @@ export interface ProjectView {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Null while active; an archived project is read-only. */
+  archivedAt: Date | null;
   /** Role of the requesting user in this project. */
   role: ProjectRole;
   memberCount: number;
@@ -22,6 +24,7 @@ interface ProjectWithCount {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
+  archivedAt: Date | null;
   _count: { members: number };
 }
 
@@ -80,10 +83,41 @@ export class ProjectsService {
     userId: string,
     dto: UpdateProjectDto,
   ): Promise<ProjectView> {
-    const { role } = await this.members.requireOwner(projectId, userId);
+    const { role } = await this.members.requireWritableOwner(projectId, userId);
     const project = await this.prisma.project.update({
       where: { id: projectId },
       data: { name: dto.name, description: dto.description },
+      include: withMemberCount,
+    });
+    return toView(project, role);
+  }
+
+  /** Owner only. Idempotent: archiving an archived project changes nothing. */
+  async archive(projectId: string, userId: string): Promise<ProjectView> {
+    const { role } = await this.members.requireOwner(projectId, userId);
+    await this.prisma.project.updateMany({
+      where: { id: projectId, archivedAt: null },
+      data: { archivedAt: new Date() },
+    });
+    return this.view(projectId, role);
+  }
+
+  /** Owner only. Idempotent, like archive. */
+  async unarchive(projectId: string, userId: string): Promise<ProjectView> {
+    const { role } = await this.members.requireOwner(projectId, userId);
+    await this.prisma.project.updateMany({
+      where: { id: projectId, archivedAt: { not: null } },
+      data: { archivedAt: null },
+    });
+    return this.view(projectId, role);
+  }
+
+  private async view(
+    projectId: string,
+    role: ProjectRole,
+  ): Promise<ProjectView> {
+    const project = await this.prisma.project.findUniqueOrThrow({
+      where: { id: projectId },
       include: withMemberCount,
     });
     return toView(project, role);

@@ -8,6 +8,8 @@ export interface ProjectView {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Null while active; an archived project is read-only. */
+  archivedAt: string | null;
   /** Role of the signed-in user in this project. */
   role: ProjectRole;
   memberCount: number;

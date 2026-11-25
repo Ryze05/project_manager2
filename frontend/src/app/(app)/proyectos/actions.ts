@@ -83,3 +83,24 @@ export async function deleteProjectAction(projectId: string): Promise<ActionResu
   revalidatePath("/", "layout");
   redirect("/proyectos");
 }
+
+/** Archive or unarchive (owner only); on success the page is refreshed in place. */
+async function setArchived(projectId: string, archive: boolean): Promise<ActionResult> {
+  const result = await callApi(`/projects/${projectId}/${archive ? "archive" : "unarchive"}`, {
+    method: "POST",
+  });
+  if (!result.ok) {
+    return { error: result.message };
+  }
+  // The sidebar lists only active projects and lives in the layout.
+  revalidatePath("/", "layout");
+  return {};
+}
+
+export async function archiveProjectAction(projectId: string): Promise<ActionResult> {
+  return setArchived(projectId, true);
+}
+
+export async function unarchiveProjectAction(projectId: string): Promise<ActionResult> {
+  return setArchived(projectId, false);
+}

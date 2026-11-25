@@ -34,7 +34,11 @@ describe('TasksService', () => {
       task: { create, findMany, findFirst, findUnique, update, delete: del },
       $transaction: transaction,
     } as unknown as PrismaService,
-    { requireMember, isMember } as unknown as MembersService,
+    {
+      requireMember,
+      requireWritableMember: requireMember,
+      isMember,
+    } as unknown as MembersService,
   );
 
   const createdAt = new Date('2026-01-01');

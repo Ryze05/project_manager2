@@ -27,7 +27,10 @@ describe('CommentsService', () => {
       },
       $transaction: transaction,
     } as unknown as PrismaService,
-    { requireMember } as unknown as MembersService,
+    {
+      requireMember,
+      requireWritableMember: requireMember,
+    } as unknown as MembersService,
   );
 
   // The interactive transaction runs its callback with the same comment mocks.

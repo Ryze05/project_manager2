@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui";
-import { getLabels, getMembers, getTask } from "@/lib/queries";
+import { getLabels, getMembers, getProject, getTask } from "@/lib/queries";
 import projectStyles from "../../../../projects.module.css";
 import { updateTaskAction } from "../../../actions";
 import { TaskForm } from "../../TaskForm";
@@ -11,12 +12,14 @@ export default async function EditTaskPage({
   params,
 }: PageProps<"/proyectos/[projectId]/tareas/[taskId]/editar">) {
   const { projectId, taskId } = await params;
-  const [task, members, labels] = await Promise.all([
+  const [project, task, members, labels] = await Promise.all([
+    getProject(projectId),
     getTask(projectId, taskId),
     getMembers(projectId),
     getLabels(projectId),
   ]);
   const back = `/proyectos/${projectId}/tareas/${taskId}`;
+  if (project.archivedAt) redirect(back);
 
   return (
     <div className={projectStyles.formPage}>

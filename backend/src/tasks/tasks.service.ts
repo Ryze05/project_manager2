@@ -247,7 +247,7 @@ export class TasksService {
     userId: string,
     dto: CreateTaskDto,
   ): Promise<TaskView> {
-    await this.members.requireMember(projectId, userId);
+    await this.members.requireWritableMember(projectId, userId);
     await this.assertAssignable(projectId, dto.assigneeId);
     await this.assertLabels(projectId, dto.labelIds);
 
@@ -281,7 +281,7 @@ export class TasksService {
     userId: string,
     dto: CreateTaskDto,
   ): Promise<TaskView> {
-    await this.members.requireMember(projectId, userId);
+    await this.members.requireWritableMember(projectId, userId);
     const parent = await this.getTask(projectId, parentId);
     if (parent.parentId !== null) {
       throw new BadRequestException('Una subtarea no puede tener subtareas');
@@ -372,7 +372,7 @@ export class TasksService {
     userId: string,
     dto: UpdateTaskDto,
   ): Promise<TaskView> {
-    await this.members.requireMember(projectId, userId);
+    await this.members.requireWritableMember(projectId, userId);
     const existing = await this.getTask(projectId, taskId);
     await this.assertAssignable(projectId, dto.assigneeId);
     if (dto.labelIds !== undefined) {
@@ -443,7 +443,7 @@ export class TasksService {
     userId: string,
     dto: MoveTaskDto,
   ): Promise<TaskView> {
-    await this.members.requireMember(projectId, userId);
+    await this.members.requireWritableMember(projectId, userId);
     const existing = await this.getTask(projectId, taskId);
     if (existing.parentId !== null) {
       throw new BadRequestException(
@@ -530,7 +530,10 @@ export class TasksService {
     taskId: string,
     userId: string,
   ): Promise<void> {
-    const membership = await this.members.requireMember(projectId, userId);
+    const membership = await this.members.requireWritableMember(
+      projectId,
+      userId,
+    );
     const task = await this.getTask(projectId, taskId);
 
     if (membership.role !== ProjectRole.OWNER && task.creatorId !== userId) {

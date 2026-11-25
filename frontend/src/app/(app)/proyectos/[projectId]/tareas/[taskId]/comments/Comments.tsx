@@ -12,12 +12,15 @@ export function Comments({
   taskId,
   currentUserId,
   isOwner,
+  readOnly = false,
 }: {
   comments: CommentView[];
   projectId: string;
   taskId: string;
   currentUserId: string;
   isOwner: boolean;
+  /** Archived project: the thread can be read, not changed. */
+  readOnly?: boolean;
 }) {
   return (
     <Card>
@@ -38,12 +41,13 @@ export function Comments({
                 when={timeAgo(comment.createdAt)}
                 isMine={isMine}
                 canDelete={isMine || isOwner}
+                readOnly={readOnly}
               />
             );
           })}
         </ul>
       )}
-      <CommentForm projectId={projectId} taskId={taskId} />
+      {!readOnly && <CommentForm projectId={projectId} taskId={taskId} />}
     </Card>
   );
 }
