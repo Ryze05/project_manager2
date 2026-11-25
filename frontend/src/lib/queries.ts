@@ -9,6 +9,7 @@ import type {
   LabelView,
   MemberView,
   MyInvitationView,
+  ProjectMetrics,
   MyTaskView,
   ProjectInvitationView,
   ProjectView,
@@ -52,6 +53,10 @@ export const getSubtasks = cache((projectId: string, taskId: string) =>
 
 export const getComments = cache((projectId: string, taskId: string) =>
   api<CommentView[]>(`/projects/${projectId}/tasks/${taskId}/comments`).then(unwrap),
+);
+
+export const getMetrics = cache((projectId: string) =>
+  api<ProjectMetrics>(`/projects/${projectId}/metrics`).then(unwrap),
 );
 
 /** Pending invitations of the project (owners only). */

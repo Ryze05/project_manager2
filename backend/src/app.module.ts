@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
 import { InvitationsModule } from './invitations/invitations.module.js';
 import { LabelsModule } from './labels/labels.module.js';
+import { MetricsModule } from './metrics/metrics.module.js';
 import { MyTasksModule } from './my-tasks/my-tasks.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
@@ -30,6 +31,7 @@ import { UsersModule } from './users/users.module.js';
     LabelsModule,
     MyTasksModule,
     InvitationsModule,
+    MetricsModule,
     HealthModule,
   ],
 })

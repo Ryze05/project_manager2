@@ -1,0 +1,133 @@
+.layout {
+  display: grid;
+  gap: var(--gap);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap);
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.kpiLabel {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.kpiValue {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+}
+
+.kpiHint {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.late {
+  color: var(--danger);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s6);
+  flex-wrap: wrap;
+  margin-top: var(--s4);
+}
+
+.donut {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donutCenter b {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.donutCenter span {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+  min-width: 180px;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.legend i {
+  width: var(--s3);
+  height: var(--s3);
+  border-radius: var(--r-full);
+  flex-shrink: 0;
+}
+
+.legend span {
+  flex: 1;
+}
+
+.subtasks {
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--s2);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.bars {
+  margin-top: var(--s4);
+  width: 100%;
+}
+
+.assigneeList {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: var(--s3) 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--s2);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.assigneeList li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.assigneeList li span:first-child {
+  color: var(--text);
+}

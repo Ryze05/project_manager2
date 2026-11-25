@@ -171,6 +171,13 @@ Lo ya construido del nivel 2, con las decisiones que se tomaron. Donde choque co
 - El invitado las ve en una bandeja dentro de la aplicación (con contador en la barra lateral) y las acepta o rechaza; el propietario ve las pendientes en la pantalla de miembros y puede cancelarlas. Aceptar queda en el historial; enviar, rechazar o cancelar, no.
 - No se envía ningún correo: el invitado solo se entera si entra en la aplicación. El envío de correo es un extra del nivel 3.
 
+### Métricas
+
+- Cada proyecto tiene una pantalla de métricas que ven todos los miembros (también si está archivado), con un botón «Métricas» en el tablero. Se calculan al abrirla, no se guardan.
+- Muestra el porcentaje completado, las tareas vencidas (sin terminar y fuera de plazo), las que vencen hoy o en los próximos 7 días, las que no tienen responsable, un gráfico de tareas por estado y otro por responsable (todos los miembros, aunque no tengan tareas).
+- Los totales cuentan solo tareas, como el tablero; las subtareas aparecen aparte (hechas / total). Las vencidas y próximas no cuentan las tareas ya hechas.
+- Descartado por ahora: la tendencia de tareas completadas por semana (necesitaría histórico de estados que solo existe desde el historial de actividad).
+
 ### Otros
 
 - Mis tareas sigue siendo una lista plana ordenada por fecha: las subtareas llevan una marca y el enlace a su tarea padre, y las tareas con subtareas muestran su progreso.

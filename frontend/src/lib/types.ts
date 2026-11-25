@@ -28,6 +28,21 @@ export interface MemberView {
   role: ProjectRole;
 }
 
+/** Numbers of a project (`GET /projects/:id/metrics`). Tasks are top-level only; subtasks come apart. */
+export interface ProjectMetrics {
+  tasks: { total: number; todo: number; inProgress: number; done: number };
+  subtasks: { total: number; done: number };
+  overdue: number;
+  dueSoon: number;
+  unassigned: number;
+  byAssignee: {
+    user: { id: string; name: string };
+    todo: number;
+    inProgress: number;
+    done: number;
+  }[];
+}
+
 /** A pending invitation, as the owners of the project see it. */
 export interface ProjectInvitationView {
   id: string;

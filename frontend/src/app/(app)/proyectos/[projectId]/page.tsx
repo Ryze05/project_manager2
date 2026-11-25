@@ -57,6 +57,9 @@ export default async function ProjectPage({
           <ButtonLink href={`/proyectos/${projectId}/actividad`} variant="ghost">
             Actividad
           </ButtonLink>
+          <ButtonLink href={`/proyectos/${projectId}/metricas`} variant="ghost">
+            Métricas
+          </ButtonLink>
           {isOwner && (
             <ButtonLink href={`/proyectos/${projectId}/editar`} variant="ghost">
               Editar
