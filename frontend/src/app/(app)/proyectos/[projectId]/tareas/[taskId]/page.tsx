@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
+import { LabelList } from "@/components/LabelList/LabelList";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { TaskCheck } from "@/components/TaskCheck/TaskCheck";
 import { Avatar, ButtonLink, Card, ProgressBar } from "@/components/ui";
@@ -74,6 +75,12 @@ export default async function TaskPage({
             <dd>
               <PriorityBadge priority={task.priority} />
             </dd>
+            {!isSubtask && (
+              <>
+                <dt>Etiquetas</dt>
+                <dd>{task.labels.length > 0 ? <LabelList labels={task.labels} /> : "Sin etiquetas"}</dd>
+              </>
+            )}
             <dt>Fecha límite</dt>
             <dd className={late ? styles.late : undefined}>
               {task.dueDate ? formatDueDate(task.dueDate) : "Sin fecha"}

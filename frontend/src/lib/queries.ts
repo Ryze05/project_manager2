@@ -5,6 +5,7 @@ import type {
   Board,
   CommentView,
   CurrentUser,
+  LabelView,
   MemberView,
   MyTaskView,
   ProjectView,
@@ -29,8 +30,13 @@ export const getMembers = cache((projectId: string) =>
   api<MemberView[]>(`/projects/${projectId}/members`).then(unwrap),
 );
 
-export const getBoard = cache((projectId: string) =>
-  api<Board>(`/projects/${projectId}/board`).then(unwrap),
+/** `query` is the already-validated filter string of `lib/board-filters.ts` ("" or "?label=..."). */
+export const getBoard = cache((projectId: string, query: string = "") =>
+  api<Board>(`/projects/${projectId}/board${query}`).then(unwrap),
+);
+
+export const getLabels = cache((projectId: string) =>
+  api<LabelView[]>(`/projects/${projectId}/labels`).then(unwrap),
 );
 
 export const getTask = cache((projectId: string, taskId: string) =>

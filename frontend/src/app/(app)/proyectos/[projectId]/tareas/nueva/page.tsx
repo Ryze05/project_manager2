@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
-import { getMembers, getProject } from "@/lib/queries";
+import { getLabels, getMembers, getProject } from "@/lib/queries";
 import styles from "../../../projects.module.css";
 import { createTaskAction } from "../../actions";
 import { TaskForm } from "../TaskForm";
@@ -11,9 +11,10 @@ export default async function NewTaskPage({
   params,
 }: PageProps<"/proyectos/[projectId]/tareas/nueva">) {
   const { projectId } = await params;
-  const [project, members] = await Promise.all([
+  const [project, members, labels] = await Promise.all([
     getProject(projectId),
     getMembers(projectId),
+    getLabels(projectId),
   ]);
 
   return (
@@ -28,6 +29,7 @@ export default async function NewTaskPage({
         <TaskForm
           action={createTaskAction.bind(null, projectId)}
           members={members}
+          labels={labels}
           cancelHref={`/proyectos/${projectId}`}
           submitLabel="Crear tarea"
           pendingLabel="Creando…"

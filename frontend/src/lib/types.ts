@@ -26,6 +26,13 @@ export interface MemberView {
   role: ProjectRole;
 }
 
+export interface LabelView {
+  id: string;
+  name: string;
+  /** How many tasks carry it. */
+  taskCount: number;
+}
+
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
 
@@ -42,6 +49,8 @@ export interface TaskView {
   creatorId: string;
   assignee: { id: string; name: string; email: string } | null;
   subtaskProgress: { done: number; total: number };
+  /** Labels of the task, by name (subtasks carry none). */
+  labels: { id: string; name: string }[];
   /** Distinct assignees of the subtasks, oldest subtask first. */
   subtaskAssignees: { id: string; name: string }[];
   createdAt: string;

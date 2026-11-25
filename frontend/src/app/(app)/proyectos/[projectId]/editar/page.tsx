@@ -2,10 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
 import { Card } from "@/components/ui";
-import { getProject } from "@/lib/queries";
+import { getLabels, getProject } from "@/lib/queries";
 import { deleteProjectAction, updateProjectAction } from "../../actions";
 import { ProjectForm } from "../../ProjectForm";
 import styles from "../../projects.module.css";
+import { LabelManager } from "./LabelManager";
 
 export const metadata = { title: "Editar proyecto · Gestor de proyectos" };
 
@@ -13,7 +14,7 @@ export default async function EditProjectPage({
   params,
 }: PageProps<"/proyectos/[projectId]/editar">) {
   const { projectId } = await params;
-  const project = await getProject(projectId);
+  const [project, labels] = await Promise.all([getProject(projectId), getLabels(projectId)]);
   // Only the owner edits or deletes (the API enforces it too).
   if (project.role !== "OWNER") redirect(`/proyectos/${projectId}`);
 
@@ -34,6 +35,14 @@ export default async function EditProjectPage({
             cancelHref={`/proyectos/${projectId}`}
             initial={{ name: project.name, description: project.description ?? "" }}
           />
+        </Card>
+        <Card>
+          <h3>Etiquetas</h3>
+          <p className={styles.dangerText}>
+            Cualquier miembro puede crear etiquetas al editar una tarea; renombrarlas o borrarlas es
+            cosa del propietario.
+          </p>
+          <LabelManager projectId={projectId} labels={labels} />
         </Card>
         <Card>
           <h3>Eliminar proyecto</h3>

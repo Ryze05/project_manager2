@@ -4,27 +4,84 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { callApi, fieldErrors, formText } from "@/lib/actions";
 import { taskSchema } from "@/lib/task-schemas";
-import type { ActionResult, TaskStatus, TaskView } from "@/lib/types";
+import type { ActionResult, LabelView, TaskStatus, TaskView } from "@/lib/types";
 
 export interface TaskFormState {
   errors?: { title?: string; description?: string };
   message?: string;
   /** Echoed back so the form does not lose what was typed. */
   values?: Record<"title" | "description" | "priority" | "dueDate" | "assigneeId", string>;
+  /** Labels ticked and typed, echoed back for the same reason. */
+  labels?: { ids: string[]; added: string };
+}
+
+const LABEL_NAME_MAX = 30;
+
+/**
+ * The label ids of a submitted task form, or `undefined` when the form has no
+ * label field (subtasks): then the labels are left alone. Ticked labels come
+ * as `labelId`; the comma-separated `newLabels` are created first (or matched
+ * with an existing one, ignoring case).
+ */
+async function readLabelIds(
+  projectId: string,
+  formData: FormData,
+): Promise<{ ids?: string[]; error?: string }> {
+  if (formData.get("hasLabels") === null) return {};
+  const ids = formData.getAll("labelId").filter((v): v is string => typeof v === "string");
+  const added = formText(formData, "newLabels")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+  if (added.length === 0) return { ids };
+
+  const tooLong = added.find((name) => name.length > LABEL_NAME_MAX);
+  if (tooLong) return { error: `La etiqueta «${tooLong}» supera los ${LABEL_NAME_MAX} caracteres` };
+
+  const existing = await callApi<LabelView[]>(`/projects/${projectId}/labels`);
+  if (!existing.ok) return { error: existing.message };
+  const byName = new Map(existing.data.map((l) => [l.name.toLowerCase(), l.id]));
+  for (const name of added) {
+    const known = byName.get(name.toLowerCase());
+    if (known) {
+      ids.push(known);
+      continue;
+    }
+    const created = await callApi<LabelView>(`/projects/${projectId}/labels`, {
+      method: "POST",
+      body: { name },
+    });
+    if (!created.ok) return { error: created.message };
+    byName.set(name.toLowerCase(), created.data.id);
+    ids.push(created.data.id);
+  }
+  return { ids: [...new Set(ids)] };
+}
+
+/** What to echo back when a task form fails, so ticked and typed labels survive. */
+function labelsEcho(formData: FormData): TaskFormState["labels"] {
+  return {
+    ids: formData.getAll("labelId").filter((v): v is string => typeof v === "string"),
+    added: formText(formData, "newLabels"),
+  };
 }
 
 /** Reads the task form, validates it and POSTs it to `path` (a task or a subtask collection). */
 async function createFromForm(
+  projectId: string,
   path: string,
   formData: FormData,
 ): Promise<{ state?: TaskFormState; created?: true }> {
   const values = taskInput(formData);
+  const labels = labelsEcho(formData);
   const parsed = taskSchema.safeParse(values);
   if (!parsed.success) {
     return {
-      state: { errors: fieldErrors(parsed.error, ["title", "description"]), values },
+      state: { errors: fieldErrors(parsed.error, ["title", "description"]), values, labels },
     };
   }
+  const labelIds = await readLabelIds(projectId, formData);
+  if (labelIds.error) return { state: { message: labelIds.error, values, labels } };
 
   const { title, description, priority, dueDate, assigneeId } = parsed.data;
   const result = await callApi<TaskView>(path, {
@@ -36,9 +93,10 @@ async function createFromForm(
       description: description || undefined,
       dueDate: dueDate || undefined,
       assigneeId: assigneeId || undefined,
+      labelIds: labelIds.ids,
     },
   });
-  if (!result.ok) return { state: { message: result.message, values } };
+  if (!result.ok) return { state: { message: result.message, values, labels } };
 
   // Tasks assigned to the user feed the sidebar counter, and a subtask under a
   // done parent reopens it: both live in the layout / board.
@@ -51,7 +109,7 @@ export async function createTaskAction(
   _prev: TaskFormState,
   formData: FormData,
 ): Promise<TaskFormState> {
-  const outcome = await createFromForm(`/projects/${projectId}/tasks`, formData);
+  const outcome = await createFromForm(projectId, `/projects/${projectId}/tasks`, formData);
   if (outcome.state) return outcome.state;
   redirect(`/proyectos/${projectId}`);
 }
@@ -64,6 +122,7 @@ export async function createSubtaskAction(
   formData: FormData,
 ): Promise<TaskFormState> {
   const outcome = await createFromForm(
+    projectId,
     `/projects/${projectId}/tasks/${parentId}/subtasks`,
     formData,
   );
@@ -110,13 +169,17 @@ export async function updateTaskAction(
   formData: FormData,
 ): Promise<TaskFormState> {
   const values = taskInput(formData);
+  const labels = labelsEcho(formData);
   const parsed = taskSchema.safeParse(values);
   if (!parsed.success) {
     return {
       errors: fieldErrors(parsed.error, ["title", "description"]),
       values,
+      labels,
     };
   }
+  const labelIds = await readLabelIds(projectId, formData);
+  if (labelIds.error) return { message: labelIds.error, values, labels };
 
   const { title, description, priority, dueDate, assigneeId } = parsed.data;
   const result = await callApi<TaskView>(`/projects/${projectId}/tasks/${taskId}`, {
@@ -128,10 +191,12 @@ export async function updateTaskAction(
       description: description || null,
       dueDate: dueDate || null,
       assigneeId: assigneeId || null,
+      // Omitted for subtasks (no label field): the API leaves labels alone.
+      labelIds: labelIds.ids,
     },
   });
   if (!result.ok) {
-    return { message: result.message, values };
+    return { message: result.message, values, labels };
   }
 
   revalidatePath("/", "layout");
@@ -150,4 +215,45 @@ export async function deleteTaskAction(
   }
   revalidatePath("/", "layout");
   redirect(parentId ? `/proyectos/${projectId}/tareas/${parentId}` : `/proyectos/${projectId}`);
+}
+
+
+/** Label management lives on the project's edit page (rename and delete are owner-only in the API). */
+export async function createLabelAction(
+  projectId: string,
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const name = formText(formData, "name").trim();
+  if (!name) return { error: "Escribe un nombre" };
+  if (name.length > LABEL_NAME_MAX) return { error: `Máximo ${LABEL_NAME_MAX} caracteres` };
+  const result = await callApi(`/projects/${projectId}/labels`, { method: "POST", body: { name } });
+  if (!result.ok) return { error: result.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
+export async function renameLabelAction(
+  projectId: string,
+  labelId: string,
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const name = formText(formData, "name").trim();
+  if (!name) return { error: "Escribe un nombre" };
+  if (name.length > LABEL_NAME_MAX) return { error: `Máximo ${LABEL_NAME_MAX} caracteres` };
+  const result = await callApi(`/projects/${projectId}/labels/${labelId}`, {
+    method: "PATCH",
+    body: { name },
+  });
+  if (!result.ok) return { error: result.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
+export async function deleteLabelAction(projectId: string, labelId: string): Promise<ActionResult> {
+  const result = await callApi(`/projects/${projectId}/labels/${labelId}`, { method: "DELETE" });
+  if (!result.ok) return { error: result.message };
+  revalidatePath("/", "layout");
+  return {};
 }

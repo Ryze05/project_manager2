@@ -159,3 +159,13 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Why a card is on the board when it is filtered by a person who is not its responsible. */
+.via {
+  font-size: var(--fs-xs);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--r-full);
+  padding: 2px var(--s2);
+  align-self: flex-start;
+}

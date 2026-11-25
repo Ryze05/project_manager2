@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LabelList } from "@/components/LabelList/LabelList";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { Avatar, AvatarStack, ProgressBar } from "@/components/ui";
 import { formatDueDate, isOverdue } from "@/lib/format";
@@ -9,9 +10,12 @@ import { MoveSelect } from "./MoveSelect";
 export function TaskCard({
   task,
   currentUserId,
+  viaSubtaskOf,
 }: {
   task: TaskView;
   currentUserId: string;
+  /** Name of the person the board is filtered by, when this card only matches through one of its subtasks. */
+  viaSubtaskOf?: string;
 }) {
   const done = task.status === "DONE";
   const late = !done && task.dueDate !== null && isOverdue(task.dueDate);
@@ -27,6 +31,8 @@ export function TaskCard({
           {task.dueDate ? formatDueDate(task.dueDate) : "Sin fecha"}
         </span>
       </div>
+      {viaSubtaskOf && <p className={styles.via}>Por una subtarea de {viaSubtaskOf}</p>}
+      <LabelList labels={task.labels} />
       {task.subtaskProgress.total > 0 && (
         <div className={styles.subtasks}>
           <ProgressBar done={task.subtaskProgress.done} total={task.subtaskProgress.total} />

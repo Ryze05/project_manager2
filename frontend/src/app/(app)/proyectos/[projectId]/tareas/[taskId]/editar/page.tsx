@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
-import { getMembers, getTask } from "@/lib/queries";
+import { getLabels, getMembers, getTask } from "@/lib/queries";
 import projectStyles from "../../../../projects.module.css";
 import { updateTaskAction } from "../../../actions";
 import { TaskForm } from "../../TaskForm";
@@ -11,9 +11,10 @@ export default async function EditTaskPage({
   params,
 }: PageProps<"/proyectos/[projectId]/tareas/[taskId]/editar">) {
   const { projectId, taskId } = await params;
-  const [task, members] = await Promise.all([
+  const [task, members, labels] = await Promise.all([
     getTask(projectId, taskId),
     getMembers(projectId),
+    getLabels(projectId),
   ]);
   const back = `/proyectos/${projectId}/tareas/${taskId}`;
 
@@ -29,6 +30,9 @@ export default async function EditTaskPage({
         <TaskForm
           action={updateTaskAction.bind(null, projectId, taskId)}
           members={members}
+          // Subtasks carry no labels: without the prop the form shows no label field.
+          labels={task.parentId ? undefined : labels}
+          initialLabelIds={task.labels.map((l) => l.id)}
           cancelHref={back}
           submitLabel="Guardar cambios"
           pendingLabel="Guardando…"

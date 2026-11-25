@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Button, Input, Select, Textarea } from "@/components/ui";
-import type { MemberView } from "@/lib/types";
+import { LabelPicker } from "@/components/LabelPicker/LabelPicker";
+import type { LabelView, MemberView } from "@/lib/types";
 import { type TaskFormState } from "../actions";
 import styles from "../../projects.module.css";
 
 type Props = {
   action: (state: TaskFormState, formData: FormData) => Promise<TaskFormState>;
   members: MemberView[];
+  /** The project's labels. Left out for subtasks, which carry none (and then no label field is shown). */
+  labels?: LabelView[];
   /** Where "Cancelar" goes when the form is a page... */
   cancelHref?: string;
   /** ...or what it does when the form lives in a modal. */
@@ -20,18 +23,21 @@ type Props = {
   pendingLabel: string;
   /** Current values when editing. */
   initial?: NonNullable<TaskFormState["values"]>;
+  initialLabelIds?: string[];
 };
 
 /** Fields shared by "new task" and "edit task". */
 export function TaskForm({
   action,
   members,
+  labels,
   cancelHref,
   onCancel,
   onSaved,
   submitLabel,
   pendingLabel,
   initial,
+  initialLabelIds,
 }: Props) {
   const [state, formAction, pending] = useActionState(
     async (prev: TaskFormState, formData: FormData) => {
@@ -43,6 +49,8 @@ export function TaskForm({
     {} as TaskFormState,
   );
   const values = state.values ?? initial;
+  // `key` remounts the capsules when a failed save echoes back what was ticked.
+  const ticked = state.labels?.ids ?? initialLabelIds ?? [];
 
   return (
     <form action={formAction} className={styles.form} noValidate>
@@ -85,6 +93,24 @@ export function TaskForm({
           </option>
         ))}
       </Select>
+      {labels && (
+        <>
+          <input type="hidden" name="hasLabels" value="1" />
+          <LabelPicker
+            key={ticked.join(",")}
+            labels={labels}
+            name="labelId"
+            selected={ticked}
+            legend="Etiquetas"
+          />
+          <Input
+            name="newLabels"
+            label={labels.length > 0 ? "Etiquetas nuevas" : "Etiquetas"}
+            hint="Opcional. Sepáralas con comas: urgente, diseño"
+            defaultValue={state.labels?.added}
+          />
+        </>
+      )}
       {state.message && (
         <p className={styles.error} role="alert">
           {state.message}
