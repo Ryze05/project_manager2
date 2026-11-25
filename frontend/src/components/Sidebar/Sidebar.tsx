@@ -11,11 +11,14 @@ export function Sidebar({
   user,
   projects,
   pendingCount,
+  invitationCount,
 }: {
   user: CurrentUser;
   projects: ProjectView[];
   /** Tasks assigned to the user that are not done. */
   pendingCount: number;
+  /** Invitations to projects waiting for an answer. */
+  invitationCount: number;
 }) {
   // The API already returns projects most recently updated first.
   const recent = projects.slice(0, RECENT_COUNT);
@@ -31,6 +34,10 @@ export function Sidebar({
         <NavLink href="/mis-tareas">
           Mis tareas
           {pendingCount > 0 && <span className={styles.pill}>{pendingCount}</span>}
+        </NavLink>
+        <NavLink href="/invitaciones">
+          Invitaciones
+          {invitationCount > 0 && <span className={styles.pill}>{invitationCount}</span>}
         </NavLink>
       </nav>
 

@@ -15,7 +15,6 @@ import {
   CurrentUser,
   type AuthUser,
 } from '../auth/decorators/current-user.decorator.js';
-import { AddMemberDto } from './dto/add-member.dto.js';
 import { ChangeRoleDto } from './dto/change-role.dto.js';
 import { MembersService, type MemberView } from './members.service.js';
 
@@ -32,18 +31,6 @@ export class MembersController {
     @CurrentUser() user: AuthUser,
   ): Promise<MemberView[]> {
     return this.members.list(projectId, user.id);
-  }
-
-  @Post('members')
-  @ApiOperation({
-    summary: 'Añadir un miembro por email (solo propietario)',
-  })
-  add(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
-    @Body() dto: AddMemberDto,
-    @CurrentUser() user: AuthUser,
-  ): Promise<MemberView> {
-    return this.members.add(projectId, user.id, dto.email);
   }
 
   @Patch('members/:userId')

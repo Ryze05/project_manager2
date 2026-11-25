@@ -62,10 +62,10 @@ describe('Activity (e2e)', () => {
         i.actor.name,
       ]),
     ).toEqual([
-      // Members were added by createTeam, so they come after (older).
+      // The member joined in createTeam, so they come after (older).
       ['TASK_CREATED', 'Hija', true, 'Pablo'],
       ['TASK_CREATED', 'Padre', false, 'Marta'],
-      ['MEMBER_ADDED', undefined, undefined, 'Marta'],
+      ['INVITATION_ACCEPTED', undefined, undefined, 'Pablo'],
     ]);
   });
 
@@ -310,8 +310,10 @@ describe('Activity (e2e)', () => {
       team.projectId,
       `?actorId=${team.member.id}`,
     );
+    // Joining through the invitation (createTeam) is the member's own event.
     expect(byMember.items.map((i) => i.type).sort()).toEqual([
       'COMMENT_ADDED',
+      'INVITATION_ACCEPTED',
       'PRIORITY_CHANGED',
     ]);
     expect(byMember.items.every((i) => i.actor.id === team.member.id)).toBe(

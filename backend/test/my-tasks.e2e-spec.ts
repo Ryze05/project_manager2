@@ -1,7 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { api, createTestApp, registerUser } from './support/app.js';
-import { createSubtask, createTask, createTeam } from './support/fixtures.js';
+import {
+  addMember,
+  createSubtask,
+  createTask,
+  createTeam,
+} from './support/fixtures.js';
 
 describe('My tasks (e2e)', () => {
   let app: INestApplication;
@@ -38,9 +43,7 @@ describe('My tasks (e2e)', () => {
     const a = await createTeam(app);
     const b = await createTeam(app);
     const me = a.member;
-    await api(app, b.owner)
-      .post(`/projects/${b.projectId}/members`, { email: me.email })
-      .expect(201);
+    await addMember(app, b.owner, b.projectId, me);
     await createTask(app, a.owner, a.projectId, {
       title: 'En A',
       assigneeId: me.id,

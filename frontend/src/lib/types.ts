@@ -28,6 +28,22 @@ export interface MemberView {
   role: ProjectRole;
 }
 
+/** A pending invitation, as the owners of the project see it. */
+export interface ProjectInvitationView {
+  id: string;
+  createdAt: string;
+  user: { id: string; name: string; email: string };
+  invitedBy: { id: string; name: string };
+}
+
+/** A pending invitation, as the invited user sees it. */
+export interface MyInvitationView {
+  id: string;
+  createdAt: string;
+  project: { id: string; name: string };
+  invitedBy: { id: string; name: string };
+}
+
 export interface LabelView {
   id: string;
   name: string;
@@ -99,7 +115,8 @@ export type ActivityType =
   | "MEMBER_REMOVED"
   | "MEMBER_PROMOTED"
   | "MEMBER_DEMOTED"
-  | "MEMBER_LEFT";
+  | "MEMBER_LEFT"
+  | "INVITATION_ACCEPTED";
 
 /** One event of the history (`GET /projects/:id/activity`). */
 export interface ActivityView {

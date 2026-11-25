@@ -127,7 +127,7 @@ describe('Archived projects (e2e)', () => {
     await owner.delete(`${base}/labels/${label.id}`).expect(409);
 
     await owner
-      .post(`${base}/members`, { email: team.outsider.email })
+      .post(`${base}/invitations`, { email: team.outsider.email })
       .expect(409);
     await owner.delete(`${base}/members/${team.member.id}`).expect(409);
     await owner.patch(base, { name: 'Otro' }).expect(409);

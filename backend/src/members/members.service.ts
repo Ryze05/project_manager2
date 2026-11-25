@@ -114,44 +114,6 @@ export class MembersService {
     return members.map(({ user, role }) => ({ ...user, role }));
   }
 
-  async add(
-    projectId: string,
-    requesterId: string,
-    email: string,
-  ): Promise<MemberView> {
-    await this.requireWritableOwner(projectId, requesterId);
-
-    const user = await this.users.findByEmail(email);
-    if (!user) {
-      throw new NotFoundException(
-        'No hay ningún usuario registrado con ese email',
-      );
-    }
-
-    const existing = await this.prisma.projectMember.findUnique({
-      where: { userId_projectId: { userId: user.id, projectId } },
-    });
-    if (existing) {
-      throw new ConflictException('El usuario ya es miembro del proyecto');
-    }
-
-    const { role } = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.projectMember.create({
-        data: { userId: user.id, projectId, role: ProjectRole.MEMBER },
-      });
-      await recordActivity(tx, [
-        {
-          type: ActivityType.MEMBER_ADDED,
-          projectId,
-          actorId: requesterId,
-          data: { name: user.name },
-        },
-      ]);
-      return created;
-    });
-    return { id: user.id, name: user.name, email: user.email, role };
-  }
-
   async remove(
     projectId: string,
     requesterId: string,

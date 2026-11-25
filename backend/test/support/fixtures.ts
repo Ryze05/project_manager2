@@ -19,11 +19,24 @@ export async function createTeam(app: INestApplication): Promise<Team> {
     .post('/projects', { name: 'Proyecto' })
     .expect(201);
   const projectId = project.body.id as string;
-  await api(app, owner)
-    .post(`/projects/${projectId}/members`, { email: member.email })
-    .expect(201);
+  await addMember(app, owner, projectId, member);
 
   return { owner, member, outsider, projectId };
+}
+
+/** Invites `user` and has them accept: the way someone joins a project. */
+export async function addMember(
+  app: INestApplication,
+  owner: TestUser,
+  projectId: string,
+  user: TestUser,
+): Promise<void> {
+  const invitation = await api(app, owner)
+    .post(`/projects/${projectId}/invitations`, { email: user.email })
+    .expect(201);
+  await api(app, user)
+    .post(`/me/invitations/${invitation.body.id as string}/accept`)
+    .expect(200);
 }
 
 /** Creates a task through the API and returns its view. */

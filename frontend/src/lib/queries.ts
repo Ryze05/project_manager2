@@ -8,7 +8,9 @@ import type {
   CurrentUser,
   LabelView,
   MemberView,
+  MyInvitationView,
   MyTaskView,
+  ProjectInvitationView,
   ProjectView,
   TaskView,
 } from "./types";
@@ -50,6 +52,16 @@ export const getSubtasks = cache((projectId: string, taskId: string) =>
 
 export const getComments = cache((projectId: string, taskId: string) =>
   api<CommentView[]>(`/projects/${projectId}/tasks/${taskId}/comments`).then(unwrap),
+);
+
+/** Pending invitations of the project (owners only). */
+export const getProjectInvitations = cache((projectId: string) =>
+  api<ProjectInvitationView[]>(`/projects/${projectId}/invitations`).then(unwrap),
+);
+
+/** My pending invitations: the inbox page and the sidebar counter share this. */
+export const getMyInvitations = cache(() =>
+  api<MyInvitationView[]>("/me/invitations").then(unwrap),
 );
 
 /** Tasks assigned to the user. The sidebar counter and "mis tareas" share the default listing. */

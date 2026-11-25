@@ -77,6 +77,8 @@ export function describe(event: ActivityView, projectId: string): FeedItem["part
       return [t(`nombró propietario a ${str(data?.name)}`)];
     case "MEMBER_DEMOTED":
       return [t(`quitó el rol de propietario a ${str(data?.name)}`)];
+    case "INVITATION_ACCEPTED":
+      return [t("aceptó la invitación y entró al proyecto")];
     case "MEMBER_LEFT":
       return [t("dejó el proyecto")];
   }

@@ -6,26 +6,26 @@ import { z } from "zod";
 import { callApi, formText } from "@/lib/actions";
 import type { ActionResult } from "@/lib/types";
 
-export interface AddMemberState {
+export interface InviteState {
   error?: string;
-  /** Changes on every successful add, so the form can clear itself. */
-  added?: number;
+  /** Changes on every successful invitation, so the form can clear itself. */
+  sent?: number;
   email?: string;
 }
 
 const emailSchema = z.email("Escribe un correo válido");
 
-export async function addMemberAction(
+export async function inviteMemberAction(
   projectId: string,
-  _prev: AddMemberState,
+  _prev: InviteState,
   formData: FormData,
-): Promise<AddMemberState> {
+): Promise<InviteState> {
   const email = formText(formData, "email").trim();
 
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { error: parsed.error.issues[0].message, email };
 
-  const result = await callApi(`/projects/${projectId}/members`, {
+  const result = await callApi(`/projects/${projectId}/invitations`, {
     method: "POST",
     body: { email: parsed.data },
   });
@@ -33,9 +33,23 @@ export async function addMemberAction(
     return { error: result.message, email };
   }
 
-  // Member counts show in the project list and header; tasks are unassigned on removal.
-  revalidatePath("/", "layout");
-  return { added: Date.now() };
+  // The pending list of the members page changes.
+  revalidatePath(`/proyectos/${projectId}/miembros`);
+  return { sent: Date.now() };
+}
+
+export async function cancelInvitationAction(
+  projectId: string,
+  invitationId: string,
+): Promise<ActionResult> {
+  const result = await callApi(`/projects/${projectId}/invitations/${invitationId}`, {
+    method: "DELETE",
+  });
+  if (!result.ok) {
+    return { error: result.message };
+  }
+  revalidatePath(`/proyectos/${projectId}/miembros`);
+  return {};
 }
 
 export async function removeMemberAction(

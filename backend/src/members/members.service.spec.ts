@@ -164,52 +164,6 @@ describe('MembersService', () => {
     });
   });
 
-  describe('add', () => {
-    const pablo = { id: 'u2', name: 'Pablo', email: 'pablo@x.com' };
-
-    it('adds a registered user as MEMBER', async () => {
-      findUnique.mockResolvedValueOnce(owner).mockResolvedValueOnce(null);
-      findByEmail.mockResolvedValue(pablo);
-      create.mockResolvedValue({ role: ProjectRole.MEMBER });
-
-      await expect(service.add('p1', 'owner', pablo.email)).resolves.toEqual({
-        ...pablo,
-        role: 'MEMBER',
-      });
-      expect(create).toHaveBeenCalledWith({
-        data: { userId: 'u2', projectId: 'p1', role: ProjectRole.MEMBER },
-      });
-    });
-
-    it('rejects an email that belongs to nobody with a clear 404', async () => {
-      findUnique.mockResolvedValue(owner);
-      findByEmail.mockResolvedValue(null);
-
-      await expect(service.add('p1', 'owner', 'no@x.com')).rejects.toThrow(
-        'No hay ningún usuario registrado con ese email',
-      );
-      expect(create).not.toHaveBeenCalled();
-    });
-
-    it('rejects a user who is already a member with 409', async () => {
-      findUnique.mockResolvedValueOnce(owner).mockResolvedValueOnce(member);
-      findByEmail.mockResolvedValue(pablo);
-
-      await expect(service.add('p1', 'owner', pablo.email)).rejects.toThrow(
-        ConflictException,
-      );
-      expect(create).not.toHaveBeenCalled();
-    });
-
-    it('is owner-only', async () => {
-      findUnique.mockResolvedValue(member);
-      await expect(service.add('p1', 'member', 'a@x.com')).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(findByEmail).not.toHaveBeenCalled();
-    });
-  });
-
   describe('changeRole', () => {
     const target = {
       ...member,

@@ -1,7 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service.js';
-import { api, createTestApp, registerUser } from './support/app.js';
-import { createSubtask, createTask, createTeam } from './support/fixtures.js';
+import { api, createTestApp } from './support/app.js';
+import {
+  addMember,
+  createSubtask,
+  createTask,
+  createTeam,
+} from './support/fixtures.js';
 
 describe('Members (e2e)', () => {
   let app: INestApplication;
@@ -16,76 +21,10 @@ describe('Members (e2e)', () => {
     await app.close();
   });
 
-  describe('POST /projects/:projectId/members', () => {
-    it('adds a registered user by email, ignoring case, as a MEMBER', async () => {
-      const { owner, outsider, projectId } = await createTeam(app);
-
-      const res = await api(app, owner)
-        .post(`/projects/${projectId}/members`, {
-          email: outsider.email.toUpperCase(),
-        })
-        .expect(201);
-
-      expect(res.body).toEqual({
-        id: outsider.id,
-        name: outsider.name,
-        email: outsider.email,
-        role: 'MEMBER',
-      });
-    });
-
-    it('answers a clear 404 for an email nobody registered', async () => {
-      const { owner, projectId } = await createTeam(app);
-
-      const res = await api(app, owner)
-        .post(`/projects/${projectId}/members`, {
-          email: `nadie-${crypto.randomUUID()}@example.com`,
-        })
-        .expect(404);
-
-      expect(res.body.message).toBe(
-        'No hay ningún usuario registrado con ese email',
-      );
-    });
-
-    it('rejects an invalid email (400), also one with surrounding spaces', async () => {
-      const { owner, outsider, projectId } = await createTeam(app);
-      const add = (email: string) =>
-        api(app, owner).post(`/projects/${projectId}/members`, { email });
-
-      await add('nope').expect(400);
-      await add(` ${outsider.email} `).expect(400);
-    });
-
-    it('rejects someone who is already a member (409), whatever the case', async () => {
-      const { owner, member, projectId } = await createTeam(app);
-
-      await api(app, owner)
-        .post(`/projects/${projectId}/members`, {
-          email: member.email.toUpperCase(),
-        })
-        .expect(409);
-    });
-
-    it('is owner-only: a member gets 403, an outsider 404', async () => {
-      const { member, outsider, projectId } = await createTeam(app);
-      const target = await registerUser(app, 'Nuevo');
-
-      await api(app, member)
-        .post(`/projects/${projectId}/members`, { email: target.email })
-        .expect(403);
-      await api(app, outsider)
-        .post(`/projects/${projectId}/members`, { email: target.email })
-        .expect(404);
-    });
-  });
-
   describe('GET /projects/:projectId/members', () => {
     it('lists the owner first, then the rest by name; visible to members', async () => {
       const { owner, member, outsider, projectId } = await createTeam(app);
-      await api(app, owner)
-        .post(`/projects/${projectId}/members`, { email: outsider.email })
-        .expect(201);
+      await addMember(app, owner, projectId, outsider);
 
       const res = await api(app, member)
         .get(`/projects/${projectId}/members`)
@@ -162,9 +101,7 @@ describe('Members (e2e)', () => {
       const other = await api(app, owner)
         .post('/projects', { name: 'Otro' })
         .expect(201);
-      await api(app, owner)
-        .post(`/projects/${other.body.id}/members`, { email: member.email })
-        .expect(201);
+      await addMember(app, owner, other.body.id, member);
       const elsewhere = await createTask(app, owner, other.body.id, {
         title: 'En otro proyecto',
         assigneeId: member.id,

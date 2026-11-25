@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Avatar, Badge, Card } from "@/components/ui";
-import { getMe, getMembers, getProject } from "@/lib/queries";
+import { timeAgo } from "@/lib/format";
+import { getMe, getMembers, getProject, getProjectInvitations } from "@/lib/queries";
 import styles from "../../projects.module.css";
-import { AddMemberForm } from "./AddMemberForm";
+import { CancelInvitation } from "./CancelInvitation";
 import { DemoteOwner } from "./DemoteOwner";
+import { InviteForm } from "./InviteForm";
 import { LeaveProject } from "./LeaveProject";
 import { RemoveMember } from "./RemoveMember";
 import { RoleButton } from "./RoleButton";
@@ -19,6 +21,8 @@ export default async function MembersPage({
     getMembers(projectId),
     getMe(),
   ]);
+  // Pending invitations are for owners only (the API refuses everyone else).
+  const invitations = project.role === "OWNER" ? await getProjectInvitations(projectId) : [];
   // Archived projects are read-only: nobody is added or removed.
   const readOnly = project.archivedAt !== null;
   const isOwner = project.role === "OWNER" && !readOnly;
@@ -42,10 +46,12 @@ export default async function MembersPage({
         {isOwner && (
           <Card>
             <div className={styles.cardHead}>
-              <h3>Añadir un miembro</h3>
-              <span className={styles.small}>Solo usuarios ya registrados</span>
+              <h3>Invitar a alguien</h3>
+              <span className={styles.small}>
+                Solo usuarios ya registrados; entran cuando aceptan
+              </span>
             </div>
-            <AddMemberForm projectId={projectId} />
+            <InviteForm projectId={projectId} />
           </Card>
         )}
 
@@ -79,6 +85,32 @@ export default async function MembersPage({
             ))}
           </ul>
         </Card>
+
+        {project.role === "OWNER" && invitations.length > 0 && (
+          <Card>
+            <div className={styles.cardHead}>
+              <h3>Invitaciones pendientes</h3>
+              <span className={styles.small}>{invitations.length}</span>
+            </div>
+            <ul className={styles.list}>
+              {invitations.map((invitation) => (
+                <li key={invitation.id}>
+                  <Avatar name={invitation.user.name} />
+                  <div className={styles.listBody}>
+                    <span className={styles.listTitle}>{invitation.user.name}</span>
+                    <span className={styles.listMeta}>
+                      {invitation.user.email} · invitó {invitation.invitedBy.name}{" "}
+                      {timeAgo(invitation.createdAt)}
+                    </span>
+                  </div>
+                  {isOwner && (
+                    <CancelInvitation projectId={projectId} invitationId={invitation.id} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
 
         {!readOnly && (
           <Card>

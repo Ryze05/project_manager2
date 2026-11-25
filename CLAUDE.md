@@ -9,7 +9,7 @@ Git repo (branch `main`, root `.gitignore` excludes `.env`, `node_modules`, `dis
 - `bd_docker/` — Docker Compose for Postgres + pgAdmin.
 - `backend/` — NestJS API (level 1 done, level 2 in progress: see "Level 2 status"). Level 1, done: project scaffold, env config + validation, global app setup (prefix, pipes, CORS, Swagger), Prisma schema + initial migration, `PrismaService`, `UsersModule`, a global `PrismaExceptionFilter`, and auth (`src/auth/`: register/login, JWT strategy, global `JwtAuthGuard` with `@Public()` opt-out, `@CurrentUser()`). `MembersModule` (membership checks + member list/add/remove), `ProjectsModule` (project CRUD), `TasksModule` (tasks, board and subtasks) and `HealthModule`. `CommentsModule` (comments on tasks and subtasks). `MyTasksModule` ("mis tareas"). Level 1 is complete. The scaffold's "Hello World" controller was removed, so there is no root route. Automated e2e tests exist (`backend/test/`, see "E2E tests"). Level 2 adds `LabelsModule`, `ActivityModule` and the task `move` endpoint (see their sections below).
 - `frontend/` — Next.js front-end (level 1 done, level 2 in progress, see "Frontend"). Level 1, done: skeleton (server-side API client, session cookie helpers), design tokens, the base UI components (`src/components/ui/`), register/login (`src/app/(auth)/`, Server Actions in `actions.ts`), `proxy.ts`, the signed-in shell (`src/app/(app)/` layout + `Sidebar`), projects (list, create, edit, delete) and members (list, add, remove), the board (move between columns, create task) and the task detail with subtasks (edit, delete, add, check off) comments (write, edit, delete) and "mis tareas". The level-1 front-end is complete. Level 2 adds the label picker and board filters, the activity pages and drag and drop.
-- **Level 2 status (last updated 2026-11-25):** done = subtask assignee initials, labels + board filters, activity history, drag and drop, archiving projects, several owners (sections "Labels and filters", "Activity history", "Drag and drop", "Archived projects", "Several owners"). **Next, in the proposed order:** invitations, metrics, short token + refresh token, and last moving a subtask / converting a task into one. Each feature: design decisions with the user first, backend, then front, tests, commit (the message is shown to the user before committing).
+- **Level 2 status (last updated 2026-11-25):** done = subtask assignee initials, labels + board filters, activity history, drag and drop, archiving projects, several owners, invitations (sections "Labels and filters", "Activity history", "Drag and drop", "Archived projects", "Several owners", "Invitations"). **Next, in the proposed order:** metrics, short token + refresh token, and last moving a subtask / converting a task into one. Each feature: design decisions with the user first, backend, then front, tests, commit (the message is shown to the user before committing).
 - **Pending manual checks** (no browser was available when they were built): drag and drop in a real browser (mouse, touch hold, keyboard), the label forms (create on the fly, rename, delete) and "Ver más" in the history.
 
 ## Product summary (from the spec)
@@ -21,7 +21,7 @@ Planned stack: NestJS (TypeScript, one module per feature: auth, projects, tasks
 Built in levels; do not start a level until the previous one works and is reviewed:
 1. Core (build order: auth/projects/members → tasks & board → subtasks → comments → mis tareas; if time is short, cut from the end)
 2. Added value (labels/filters, activity log, drag & drop with stored position, invitations, metrics, archiving, ownership transfer, refresh tokens…)
-3. Extras (read-only role, notifications, realtime, attachments, e2e tests)
+3. Extras (read-only role, notifications, realtime, attachments, e2e tests). **Added by the user (not in the spec): email sending**, starting with a notice to the invited person when they get an invitation (today they only see it inside the app); the spec's notifications are in-app only. It also unlocks inviting unregistered emails.
 
 ## Architecture and business rules that span modules
 
@@ -32,7 +32,7 @@ Built in levels; do not start a level until the previous one works and is review
 - Level 1: a subtask cannot be moved to another parent nor can a task be converted to a subtask (level 2 lifts this).
 - Level 1: exactly one owner per project; the owner cannot leave or be removed (only delete the project). Level 2 replaced this with several owners (see "Several owners").
 - Removing a member leaves their tasks/subtasks unassigned. Deleting a task cascades to subtasks and comments; deleting a project cascades to everything.
-- Non-members cannot see anything about a project. Members can add members only by email of already-registered users (clear error otherwise).
+- Non-members cannot see anything about a project. Owners invite people by email, only already-registered users (clear error otherwise); they join by accepting (level 2: see "Invitations"; level 1 added them directly).
 - Permissions: owner and member both create/edit/move tasks and comment; members delete only tasks/subtasks they created and only their own comments; owner deletes any task/comment; only owner manages members and edits/deletes the project. Comments are editable only by their author.
 - Auth: password min 8 chars with one uppercase and one number; JWT valid 24h (level 1).
 - Board: subtasks never appear as cards, only inside the parent; cards in a manual order (drag and drop, level 2; before that: priority, then due date). "Mis tareas" is ordered by due date, shows pending + in-progress by default (toggle for done), and shows project and parent task for subtasks.
@@ -105,6 +105,15 @@ Decided with the user: one mechanism covers both "several owners" and "transfer"
 - Activity: new types `MEMBER_PROMOTED`, `MEMBER_DEMOTED`, `MEMBER_LEFT` (actor = who did it; for LEFT, the leaver).
 - **Front-end** (members page): owners see "Hacer propietario" + "Quitar" on members and "Quitar propietario" on owners (only while there is more than one; it asks for confirmation, even for yourself, via `DemoteOwner`; promoting has no dialog); everyone gets a "Dejar el proyecto" card (the last owner sees why they cannot instead of the button). Leaving redirects to `/proyectos`.
 - Tests: `test/ownership.e2e-spec.ts` (checked with a mutation: leaving as last owner), `changeRole` unit tests in `members.service.spec.ts`. Not verified in a browser.
+
+## Invitations (level 2)
+
+Decided with the user: invitations **replace** the direct add (`POST .../members` no longer exists, nobody is put in a project without accepting), only registered users, owners only, no expiry.
+- **`Invitation`** (project, invited user, inviter; unique per project+user) **exists only while pending**: accept, decline and cancel delete it; accept also creates the MEMBER membership and records `INVITATION_ACCEPTED` (actor = the invited user) in one transaction. Sending/declining/cancelling record nothing.
+- Backend `src/invitations/` (`InvitationsModule` imports `MembersModule`, `UsersModule`): `POST|GET /projects/:id/invitations` and `DELETE .../:invitationId` (owner only; invite/cancel are writes, so 409 on archived projects; 404 unknown email, 409 already member or already invited); `GET /me/invitations` (newest first, hides those of archived projects), `POST /me/invitations/:id/accept` (returns `{ projectId }`; 409 if the project got archived) and `/decline` (204). Someone else's invitation is a 404. Accept deletes the row first inside the transaction, so a double click joins once.
+- **Front-end:** members page: "Invitar a alguien" form (`InviteForm`) and, for owners, a card of pending invitations with "Cancelar invitación"; `/invitaciones` (sidebar link with a counter, fetched by the layout through `getMyInvitations`) with Aceptar (goes to the project) / Rechazar. No email is sent: the invited user only sees it in the app.
+- Tests: `test/invitations.e2e-spec.ts` (checked with a mutation: joining an archived project). The e2e fixture `createTeam` now joins its member through `addMember` (invite + accept). Not verified in a browser.
+- **Planned for level 3 (decided): email sending**, so the invited person is told by email. Not decided: expiry, inviting unregistered emails (depends on the email sending), a role choice when inviting.
 
 ## Database environment (`bd_docker/`)
 
