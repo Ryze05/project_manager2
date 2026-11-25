@@ -187,9 +187,7 @@ describe('Members (e2e)', () => {
         .delete(`/projects/${projectId}/members/${owner.id}`)
         .expect(403);
 
-      expect(res.body.message).toBe(
-        'El propietario no puede ser quitado del proyecto',
-      );
+      expect(res.body.message).toMatch(/^Un propietario no puede ser quitado/);
       expect(await prisma.projectMember.count({ where: { projectId } })).toBe(
         2,
       );

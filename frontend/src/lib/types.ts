@@ -96,7 +96,10 @@ export type ActivityType =
   | "LABEL_REMOVED"
   | "COMMENT_ADDED"
   | "MEMBER_ADDED"
-  | "MEMBER_REMOVED";
+  | "MEMBER_REMOVED"
+  | "MEMBER_PROMOTED"
+  | "MEMBER_DEMOTED"
+  | "MEMBER_LEFT";
 
 /** One event of the history (`GET /projects/:id/activity`). */
 export interface ActivityView {

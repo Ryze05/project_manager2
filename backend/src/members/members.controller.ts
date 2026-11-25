@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -15,15 +16,16 @@ import {
   type AuthUser,
 } from '../auth/decorators/current-user.decorator.js';
 import { AddMemberDto } from './dto/add-member.dto.js';
+import { ChangeRoleDto } from './dto/change-role.dto.js';
 import { MembersService, type MemberView } from './members.service.js';
 
 @ApiTags('members')
 @ApiBearerAuth()
-@Controller('projects/:projectId/members')
+@Controller('projects/:projectId')
 export class MembersController {
   constructor(private readonly members: MembersService) {}
 
-  @Get()
+  @Get('members')
   @ApiOperation({ summary: 'Listar los miembros del proyecto' })
   list(
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -32,7 +34,7 @@ export class MembersController {
     return this.members.list(projectId, user.id);
   }
 
-  @Post()
+  @Post('members')
   @ApiOperation({
     summary: 'Añadir un miembro por email (solo propietario)',
   })
@@ -44,7 +46,21 @@ export class MembersController {
     return this.members.add(projectId, user.id, dto.email);
   }
 
-  @Delete(':userId')
+  @Patch('members/:userId')
+  @ApiOperation({
+    summary:
+      'Promover a propietario o degradar a miembro (cualquier propietario)',
+  })
+  changeRole(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() dto: ChangeRoleDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<MemberView> {
+    return this.members.changeRole(projectId, user.id, userId, dto.role);
+  }
+
+  @Delete('members/:userId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Quitar un miembro (solo propietario)' })
   remove(
@@ -53,5 +69,18 @@ export class MembersController {
     @CurrentUser() user: AuthUser,
   ): Promise<void> {
     return this.members.remove(projectId, user.id, userId);
+  }
+
+  @Post('leave')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      'Abandonar el proyecto (el último propietario no puede: promueve a otro antes)',
+  })
+  leave(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<void> {
+    return this.members.leave(projectId, user.id);
   }
 }

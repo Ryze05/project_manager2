@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { callApi, formText } from "@/lib/actions";
 import type { ActionResult } from "@/lib/types";
@@ -47,4 +48,32 @@ export async function removeMemberAction(
   }
   revalidatePath("/", "layout");
   return {};
+}
+
+/** Promote a member to owner or demote an owner (any owner can, even themselves). */
+export async function changeRoleAction(
+  projectId: string,
+  userId: string,
+  role: "OWNER" | "MEMBER",
+): Promise<ActionResult> {
+  const result = await callApi(`/projects/${projectId}/members/${userId}`, {
+    method: "PATCH",
+    body: { role },
+  });
+  if (!result.ok) {
+    return { error: result.message };
+  }
+  // Demoting yourself changes what the layout and every page of the project allow.
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/** The signed-in user leaves the project and goes back to the list. */
+export async function leaveProjectAction(projectId: string): Promise<ActionResult> {
+  const result = await callApi(`/projects/${projectId}/leave`, { method: "POST" });
+  if (!result.ok) {
+    return { error: result.message };
+  }
+  revalidatePath("/", "layout");
+  redirect("/proyectos");
 }

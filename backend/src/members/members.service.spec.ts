@@ -17,11 +17,14 @@ describe('MembersService', () => {
   const createMany = vi.fn();
   const projectFindUnique = vi.fn();
   const transaction = vi.fn();
+  const update = vi.fn();
+  const count = vi.fn();
+  const queryRaw = vi.fn();
   const findByEmail = vi.fn();
 
   const service = new MembersService(
     {
-      projectMember: { findUnique, findMany, create, delete: del },
+      projectMember: { findUnique, findMany, create, delete: del, update },
       task: { updateMany },
       project: { findUnique: projectFindUnique },
       $transaction: transaction,
@@ -38,9 +41,10 @@ describe('MembersService', () => {
 
   // The interactive transaction runs its callback with the same mocks.
   const tx = {
-    projectMember: { create, delete: del },
+    projectMember: { create, delete: del, update, count },
     task: { updateMany },
     activity: { createMany },
+    $queryRaw: queryRaw,
   };
 
   beforeEach(() => {
@@ -206,6 +210,67 @@ describe('MembersService', () => {
     });
   });
 
+  describe('changeRole', () => {
+    const target = {
+      ...member,
+      user: { id: 'member', name: 'Pablo', email: 'p@x' },
+    };
+
+    it('promotes a member and records it', async () => {
+      findUnique.mockResolvedValueOnce(owner).mockResolvedValueOnce(target);
+
+      const view = await service.changeRole('p1', 'owner', 'member', 'OWNER');
+
+      expect(view).toMatchObject({ id: 'member', role: 'OWNER' });
+      expect(update).toHaveBeenCalledWith({
+        where: { userId_projectId: { userId: 'member', projectId: 'p1' } },
+        data: { role: 'OWNER' },
+      });
+      expect(createMany).toHaveBeenCalledWith({
+        data: [expect.objectContaining({ type: 'MEMBER_PROMOTED' })],
+      });
+    });
+
+    it('does nothing when the role is already that one', async () => {
+      findUnique.mockResolvedValueOnce(owner).mockResolvedValueOnce(target);
+      await service.changeRole('p1', 'owner', 'member', 'MEMBER');
+      expect(transaction).not.toHaveBeenCalled();
+    });
+
+    it('refuses to demote the last owner (409) after locking the project', async () => {
+      findUnique
+        .mockResolvedValueOnce(owner)
+        .mockResolvedValueOnce({ ...owner, user: target.user });
+      count.mockResolvedValue(0);
+
+      await expect(
+        service.changeRole('p1', 'owner', 'owner', 'MEMBER'),
+      ).rejects.toThrow(ConflictException);
+      expect(queryRaw).toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('lets an owner demote another when someone else stays', async () => {
+      findUnique
+        .mockResolvedValueOnce(owner)
+        .mockResolvedValueOnce({ ...owner, user: target.user });
+      count.mockResolvedValue(1);
+
+      await service.changeRole('p1', 'owner', 'owner', 'MEMBER');
+      expect(update).toHaveBeenCalled();
+      expect(createMany).toHaveBeenCalledWith({
+        data: [expect.objectContaining({ type: 'MEMBER_DEMOTED' })],
+      });
+    });
+
+    it('is owner-only', async () => {
+      findUnique.mockResolvedValue(member);
+      await expect(
+        service.changeRole('p1', 'member', 'member', 'OWNER'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
   describe('remove', () => {
     it('unassigns their tasks and deletes the membership in one transaction', async () => {
       findUnique.mockResolvedValueOnce(owner).mockResolvedValueOnce(member);
@@ -240,7 +305,7 @@ describe('MembersService', () => {
       findUnique.mockResolvedValueOnce(owner).mockResolvedValueOnce(owner);
 
       await expect(service.remove('p1', 'owner', 'owner')).rejects.toThrow(
-        'El propietario no puede ser quitado del proyecto',
+        'Un propietario no puede ser quitado',
       );
       expect(transaction).not.toHaveBeenCalled();
     });
