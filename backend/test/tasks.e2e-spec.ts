@@ -125,7 +125,7 @@ describe('Tasks and board (e2e)', () => {
       });
     });
 
-    it('orders each column by priority, then due date (none last), then age', async () => {
+    it('orders each column manually: new tasks at the end, regardless of priority or date', async () => {
       const { owner, member, projectId } = await createTeam(app);
       const make = (body: object, user = owner) =>
         createTask(app, user, projectId, body);
@@ -139,7 +139,8 @@ describe('Tasks and board (e2e)', () => {
 
       const { TODO } = await board(owner, projectId);
 
-      expect(titles(TODO)).toEqual(['B', 'A', 'C', 'E', 'F', 'G', 'D']);
+      // Creation order, not priority/due date (that was the old automatic sort).
+      expect(titles(TODO)).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
     });
 
     it('shows each task in the column of its status', async () => {

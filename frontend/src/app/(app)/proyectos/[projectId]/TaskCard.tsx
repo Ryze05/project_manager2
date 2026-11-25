@@ -21,7 +21,7 @@ export function TaskCard({
   const late = !done && task.dueDate !== null && isOverdue(task.dueDate);
 
   return (
-    <li className={[styles.card, done && styles.done].filter(Boolean).join(" ")}>
+    <div className={[styles.card, done && styles.done].filter(Boolean).join(" ")}>
       <Link href={`/proyectos/${task.projectId}/tareas/${task.id}`} className={styles.title}>
         {task.title}
       </Link>
@@ -40,7 +40,10 @@ export function TaskCard({
         </div>
       )}
       <div className={styles.row}>
-        <MoveSelect projectId={task.projectId} taskId={task.id} status={task.status} />
+        {/* Hidden while dragging is on (see board.module.css); the way to move cards on narrow screens. */}
+        <div className={styles.moveMenu}>
+          <MoveSelect projectId={task.projectId} taskId={task.id} status={task.status} />
+        </div>
         {task.assignee ? (
           <span title={task.assignee.name}>
             <Avatar name={task.assignee.name} me={task.assignee.id === currentUserId} />
@@ -49,6 +52,6 @@ export function TaskCard({
           <span className={styles.small}>Sin responsable</span>
         )}
       </div>
-    </li>
+    </div>
   );
 }

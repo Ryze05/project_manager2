@@ -71,6 +71,9 @@ model Task {
   status      TaskStatus   @default(TODO)
   priority    TaskPriority @default(MEDIUM)
   dueDate     DateTime?
+  // Orden manual dentro de la columna del tablero (solo tareas, no subtareas). Mayor = mas abajo.
+  // Es un numero con huecos: soltar entre dos tarjetas toma el punto medio, sin renumerar.
+  position    Float        @default(0)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -88,7 +91,7 @@ model Task {
   // Solo las tareas llevan etiquetas, no las subtareas (validado en el servicio).
   labels   Label[]
 
-  @@index([projectId, status])
+  @@index([projectId, status, position])
   @@index([assigneeId, dueDate])
   @@index([parentId])
 }

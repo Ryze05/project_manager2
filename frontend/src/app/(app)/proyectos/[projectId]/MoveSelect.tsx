@@ -32,8 +32,11 @@ export function MoveSelect({
     });
   }
 
+  // The card is draggable: what is done on this menu must never start (or feed) a drag.
+  const stop = (event: { stopPropagation: () => void }) => event.stopPropagation();
+
   return (
-    <>
+    <div onPointerDown={stop} onTouchStart={stop} onKeyDown={stop}>
       <select
         className={styles.move}
         aria-label="Mover tarea a"
@@ -57,6 +60,6 @@ export function MoveSelect({
           {error}
         </p>
       )}
-    </>
+    </div>
   );
 }

@@ -152,6 +152,31 @@ export async function moveTaskAction(
   return {};
 }
 
+/**
+ * Drag and drop: drop a card in a column between two others. The server derives
+ * the position from the neighbours. Returns `{ error }` if refused (e.g. 409:
+ * pending subtasks), and the board puts the card back.
+ */
+export async function dropTaskAction(
+  projectId: string,
+  taskId: string,
+  status: TaskStatus,
+  afterTaskId: string | null,
+  beforeTaskId: string | null,
+): Promise<ActionResult> {
+  // Called from a client component: do not trust the argument's type.
+  if (!["TODO", "IN_PROGRESS", "DONE"].includes(status)) {
+    return { error: "Estado no válido" };
+  }
+  const result = await callApi(`/projects/${projectId}/tasks/${taskId}/move`, {
+    method: "PATCH",
+    body: { status, afterTaskId, beforeTaskId },
+  });
+  if (!result.ok) return { error: result.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
 function taskInput(formData: FormData) {
   return {
     title: formText(formData, "title"),

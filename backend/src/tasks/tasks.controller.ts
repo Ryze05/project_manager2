@@ -18,6 +18,7 @@ import {
 } from '../auth/decorators/current-user.decorator.js';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
+import { MoveTaskDto } from './dto/move-task.dto.js';
 import { BoardQueryDto } from './dto/board-query.dto.js';
 import { TasksService, type Board, type TaskView } from './tasks.service.js';
 
@@ -96,6 +97,20 @@ export class TasksController {
     @CurrentUser() user: AuthUser,
   ): Promise<TaskView> {
     return this.tasks.update(projectId, taskId, user.id, dto);
+  }
+
+  @Patch('tasks/:taskId/move')
+  @ApiOperation({
+    summary:
+      'Arrastrar y soltar: mueve una tarea a una columna, entre dos tarjetas (no vale para subtareas)',
+  })
+  move(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('taskId', ParseUUIDPipe) taskId: string,
+    @Body() dto: MoveTaskDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<TaskView> {
+    return this.tasks.move(projectId, taskId, user.id, dto);
   }
 
   @Delete('tasks/:taskId')

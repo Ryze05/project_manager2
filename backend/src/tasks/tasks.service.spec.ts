@@ -17,6 +17,7 @@ describe('TasksService', () => {
   const update = vi.fn();
   const del = vi.fn();
   const createMany = vi.fn();
+  const aggregate = vi.fn();
   const transaction = vi.fn();
   const requireMember = vi.fn();
   const isMember = vi.fn();
@@ -24,7 +25,7 @@ describe('TasksService', () => {
   // The interactive transaction runs its callback with a client exposing the
   // same task mocks, so assertions on create/update work inside and outside it.
   const tx = {
-    task: { create, update, delete: del },
+    task: { create, update, delete: del, aggregate, findMany, findUnique },
     activity: { createMany },
   };
 
@@ -96,6 +97,8 @@ describe('TasksService', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    // The highest position in a column; a new card goes right after it.
+    aggregate.mockResolvedValue({ _max: { position: 4 } });
     transaction.mockImplementation(async (fn: (client: typeof tx) => unknown) =>
       fn(tx),
     );
@@ -115,6 +118,7 @@ describe('TasksService', () => {
           priority: undefined,
           dueDate: undefined,
           assigneeId: undefined,
+          position: 5,
           projectId: 'p1',
           creatorId: 'u1',
         },
@@ -190,7 +194,7 @@ describe('TasksService', () => {
   });
 
   describe('board', () => {
-    it('queries only top-level tasks, ordered by priority, due date, age', async () => {
+    it('queries only top-level tasks, in manual order (position), then age', async () => {
       asMember();
       findMany.mockResolvedValue([]);
 
@@ -199,11 +203,7 @@ describe('TasksService', () => {
       expect(findMany).toHaveBeenCalledWith({
         where: { projectId: 'p1', parentId: null, AND: [] },
         include,
-        orderBy: [
-          { priority: 'desc' },
-          { dueDate: { sort: 'asc', nulls: 'last' } },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       });
     });
 
@@ -342,7 +342,8 @@ describe('TasksService', () => {
 
       expect(update).toHaveBeenCalledWith({
         where: { id: 't1' },
-        data: { status: 'IN_PROGRESS' },
+        // Changing column without dragging lands at the end of the new one.
+        data: { status: 'IN_PROGRESS', position: 5 },
         include,
       });
       expect(result.status).toBe('IN_PROGRESS');

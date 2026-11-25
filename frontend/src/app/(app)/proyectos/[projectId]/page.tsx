@@ -4,7 +4,7 @@ import { hasFilters, parseFilters, toQuery } from "@/lib/board-filters";
 import { getBoard, getLabels, getMe, getMembers, getProject } from "@/lib/queries";
 import type { TaskStatus, TaskView } from "@/lib/types";
 import styles from "../projects.module.css";
-import boardStyles from "./board.module.css";
+import { BoardColumns } from "./BoardColumns";
 import { BoardFilters } from "./BoardFilters";
 import { TaskCard } from "./TaskCard";
 
@@ -65,29 +65,19 @@ export default async function ProjectPage({
 
       <BoardFilters projectId={projectId} filters={filters} labels={labels} members={members} />
 
-      <div className={boardStyles.board}>
-        {COLUMNS.map(({ status, label }) => (
-          <section key={status} className={boardStyles.column} aria-label={label}>
-            <h2 className={boardStyles.columnHead}>
-              {label} <span className={boardStyles.count}>{board[status].length}</span>
-            </h2>
-            {board[status].length === 0 ? (
-              <p className={boardStyles.empty}>{filtered ? "Ninguna coincide" : "Sin tareas"}</p>
-            ) : (
-              <ul className={boardStyles.cards}>
-                {board[status].map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    currentUserId={me.id}
-                    viaSubtaskOf={viaSubtask(task)}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
-      </div>
+      <BoardColumns
+        projectId={projectId}
+        filtered={filtered}
+        cards={COLUMNS.flatMap(({ status }) =>
+          board[status].map((task) => ({
+            id: task.id,
+            status,
+            node: (
+              <TaskCard task={task} currentUserId={me.id} viaSubtaskOf={viaSubtask(task)} />
+            ),
+          })),
+        )}
+      />
     </div>
   );
 }

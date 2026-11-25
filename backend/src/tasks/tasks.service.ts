@@ -20,6 +20,8 @@ import {
 import { MembersService } from '../members/members.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTaskDto } from './dto/create-task.dto.js';
+import type { MoveTaskDto } from './dto/move-task.dto.js';
+import { positionBetween } from './position.js';
 import type { BoardQueryDto } from './dto/board-query.dto.js';
 import type { UpdateTaskDto } from './dto/update-task.dto.js';
 
@@ -161,6 +163,35 @@ function boardFilters(filters: BoardQueryDto): Prisma.TaskWhereInput[] {
   return conditions;
 }
 
+/** Position that puts a task at the end of a column of the board (top-level tasks only). */
+async function endOfColumn(
+  tx: Pick<Prisma.TransactionClient, 'task'>,
+  projectId: string,
+  status: TaskStatus,
+): Promise<number> {
+  const { _max } = await tx.task.aggregate({
+    where: { projectId, status, parentId: null },
+    _max: { position: true },
+  });
+  return positionBetween(null, null, _max.position ?? 0) as number;
+}
+
+/** Gives the column positions 1..n in its current order, to make room again. */
+async function renumberColumn(
+  tx: Pick<Prisma.TransactionClient, 'task'>,
+  projectId: string,
+  status: TaskStatus,
+): Promise<void> {
+  const column = await tx.task.findMany({
+    where: { projectId, status, parentId: null },
+    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true },
+  });
+  for (const [index, { id }] of column.entries()) {
+    await tx.task.update({ where: { id }, data: { position: index + 1 } });
+  }
+}
+
 /** A task (or subtask) was created. */
 function createdEntry(
   task: {
@@ -225,6 +256,8 @@ export class TasksService {
         data: {
           ...fieldsOf(dto),
           ...(dto.labelIds?.length && { labels: connect(dto.labelIds) }),
+          // A new task goes to the end of "por hacer".
+          position: await endOfColumn(tx, projectId, TaskStatus.TODO),
           projectId,
           creatorId: userId,
         },
@@ -313,11 +346,7 @@ export class TasksService {
     const tasks = await this.prisma.task.findMany({
       where: { projectId, parentId: null, AND: boardFilters(filters) },
       include: taskInclude,
-      orderBy: [
-        { priority: 'desc' },
-        { dueDate: { sort: 'asc', nulls: 'last' } },
-        { createdAt: 'asc' },
-      ],
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     });
 
     const board: Board = { TODO: [], IN_PROGRESS: [], DONE: [] };
@@ -381,11 +410,109 @@ export class TasksService {
         data: {
           ...fieldsOf(dto),
           status: dto.status,
+          // Changing column without dragging (the menu, the detail) lands at the end of it.
+          ...(dto.status !== undefined &&
+            dto.status !== existing.status &&
+            existing.parentId === null && {
+              position: await endOfColumn(tx, projectId, dto.status),
+            }),
           // The list replaces the labels; omitted leaves them alone.
           ...(dto.labelIds !== undefined && {
             labels: { set: dto.labelIds.map((id) => ({ id })) },
           }),
         },
+        include: taskInclude,
+      });
+      await recordActivity(tx, taskChanges(existing, updated, userId));
+      return updated;
+    });
+    return toView(task);
+  }
+
+  /**
+   * Drag and drop: puts a top-level task in a column, between two cards. The
+   * client says which cards are around it; the server turns that into a
+   * position (renumbering the column first if the gaps ran out). Changing
+   * column is a status change, so it follows the same rule as `update`
+   * (not DONE with pending subtasks) and is recorded in the history;
+   * reordering inside a column is not (it would only be noise).
+   */
+  async move(
+    projectId: string,
+    taskId: string,
+    userId: string,
+    dto: MoveTaskDto,
+  ): Promise<TaskView> {
+    await this.members.requireMember(projectId, userId);
+    const existing = await this.getTask(projectId, taskId);
+    if (existing.parentId !== null) {
+      throw new BadRequestException(
+        'Las subtareas no se ordenan en el tablero',
+      );
+    }
+    if (
+      dto.status === TaskStatus.DONE &&
+      existing.subtasks.some((s) => s.status !== TaskStatus.DONE)
+    ) {
+      throw new ConflictException(
+        'No se puede completar la tarea mientras tenga subtareas pendientes',
+      );
+    }
+
+    const neighbours = [dto.afterTaskId, dto.beforeTaskId].filter(
+      (id): id is string => typeof id === 'string',
+    );
+    if (neighbours.includes(taskId)) {
+      throw new BadRequestException('Una tarea no puede ir junto a sí misma');
+    }
+
+    const task = await this.prisma.$transaction(async (tx) => {
+      // The neighbours must be cards of that column of this project.
+      const found = await tx.task.findMany({
+        where: {
+          id: { in: neighbours },
+          projectId,
+          parentId: null,
+          status: dto.status,
+        },
+        select: { id: true },
+      });
+      if (found.length !== new Set(neighbours).size) {
+        throw new BadRequestException(
+          'Las tarjetas vecinas no están en esa columna',
+        );
+      }
+
+      const place = async () => {
+        const positionOf = async (id: string | null | undefined) =>
+          id
+            ? ((
+                await tx.task.findUniqueOrThrow({
+                  where: { id },
+                  select: { position: true },
+                })
+              ).position as number)
+            : null;
+        const above = await positionOf(dto.afterTaskId);
+        const below = await positionOf(dto.beforeTaskId);
+        const { _max } = await tx.task.aggregate({
+          where: { projectId, status: dto.status, parentId: null },
+          _max: { position: true },
+        });
+        return positionBetween(above, below, _max.position ?? 0);
+      };
+
+      let position = await place();
+      if (position === null) {
+        // The gaps ran out (or the client's neighbours are out of order): renumber and retry.
+        await renumberColumn(tx, projectId, dto.status);
+        position =
+          (await place()) ?? (await endOfColumn(tx, projectId, dto.status));
+      }
+
+      const updated = await tx.task.update({
+        where: { id: taskId },
+        data: { status: dto.status, position },
         include: taskInclude,
       });
       await recordActivity(tx, taskChanges(existing, updated, userId));

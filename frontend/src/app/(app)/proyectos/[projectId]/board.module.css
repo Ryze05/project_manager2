@@ -31,6 +31,58 @@
   font-size: var(--fs-xs);
 }
 
+/* The sortable wrapper of a card (the card itself is `.card`). */
+.item {
+  list-style: none;
+  touch-action: manipulation;
+}
+
+[data-drag="on"] .item {
+  cursor: grab;
+  /* While a finger holds a card it must not scroll the page. */
+  touch-action: none;
+}
+
+.dragging {
+  /* The card in the column stays as a ghost while the overlay follows the pointer. */
+  opacity: 0.35;
+}
+
+.overlay {
+  cursor: grabbing;
+  box-shadow: var(--shadow);
+  border-radius: var(--r-md);
+}
+
+/* The card that follows the pointer is not a menu to use. */
+.overlay .moveMenu {
+  display: none;
+}
+
+.over {
+  background: color-mix(in srgb, var(--accent-soft) 45%, var(--sunken));
+}
+
+.dragHint {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  margin-bottom: var(--s3);
+}
+
+.dragError {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--r-md);
+  padding: var(--s2) var(--s3);
+  font-size: var(--fs-md);
+  margin-bottom: var(--s3);
+}
+
+/* With dragging on, the "Mover a…" menu is redundant; narrow screens (dragging off) keep it. */
+[data-drag="on"] .moveMenu {
+  display: none;
+}
+
 .cards {
   list-style: none;
   margin: 0;
