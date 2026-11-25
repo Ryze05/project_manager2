@@ -80,3 +80,42 @@ export interface MyTaskView extends TaskView {
 export interface ActionResult {
   error?: string;
 }
+
+export type ActivityType =
+  | "TASK_CREATED"
+  | "TASK_DELETED"
+  | "TITLE_CHANGED"
+  | "DESCRIPTION_CHANGED"
+  | "STATUS_CHANGED"
+  | "PRIORITY_CHANGED"
+  | "DUE_DATE_CHANGED"
+  | "ASSIGNEE_CHANGED"
+  | "LABEL_ADDED"
+  | "LABEL_REMOVED"
+  | "COMMENT_ADDED"
+  | "MEMBER_ADDED"
+  | "MEMBER_REMOVED";
+
+/** One event of the history (`GET /projects/:id/activity`). */
+export interface ActivityView {
+  id: string;
+  type: ActivityType;
+  createdAt: string;
+  actor: { id: string; name: string };
+  /** null for member events; `deleted` once the task no longer exists. */
+  task: { id: string; title: string; isSubtask: boolean; deleted: boolean } | null;
+  data: Record<string, string | number | null> | null;
+}
+
+export interface ActivityPage {
+  items: ActivityView[];
+  nextCursor: string | null;
+}
+
+/** An event ready to show: the sentence in pieces (some of them links) and the time already formatted. */
+export interface FeedItem {
+  id: string;
+  actor: string;
+  parts: { text: string; href?: string }[];
+  when: string;
+}

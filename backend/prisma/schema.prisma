@@ -35,6 +35,7 @@ model User {
   createdTasks  Task[]          @relation("TaskCreator")
   assignedTasks Task[]          @relation("TaskAssignee")
   comments      Comment[]
+  activities    Activity[]
 }
 
 model Project {
@@ -44,9 +45,10 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  members ProjectMember[]
-  tasks   Task[]
-  labels  Label[]
+  members    ProjectMember[]
+  tasks      Task[]
+  labels     Label[]
+  activities Activity[]
 }
 
 model ProjectMember {
@@ -121,4 +123,47 @@ model Label {
   tasks   Task[]
 
   @@unique([projectId, name])
+}
+
+enum ActivityType {
+  TASK_CREATED
+  TASK_DELETED
+  TITLE_CHANGED
+  DESCRIPTION_CHANGED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  DUE_DATE_CHANGED
+  ASSIGNEE_CHANGED
+  LABEL_ADDED
+  LABEL_REMOVED
+  COMMENT_ADDED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+}
+
+// Historial del proyecto. Un evento por campo cambiado. taskId NO es clave foranea a
+// proposito: el rastro de una tarea borrada tiene que sobrevivirla, por eso se guarda
+// tambien su titulo (taskTitle). Solo desaparece al borrar el proyecto. `data` lleva
+// los valores ya legibles (de/a), para que el historial no cambie si luego se renombra algo.
+model Activity {
+  id        String       @id @default(uuid()) @db.Uuid
+  type      ActivityType
+  createdAt DateTime     @default(now())
+
+  projectId String  @db.Uuid
+  actorId   String  @db.Uuid
+  taskId    String? @db.Uuid
+  taskTitle String?
+  isSubtask Boolean @default(false)
+  // Padre de la subtarea del evento (sin FK, como taskId): deja que el historial de la padre
+  // incluya cuando se crea o se completa una subtarea suya.
+  parentId  String? @db.Uuid
+  data      Json?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor   User    @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([taskId, createdAt(sort: Desc)])
+  @@index([parentId, createdAt(sort: Desc)])
 }

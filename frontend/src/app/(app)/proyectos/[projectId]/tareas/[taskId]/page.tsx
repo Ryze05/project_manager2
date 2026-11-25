@@ -2,10 +2,13 @@ import Link from "next/link";
 import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
 import { LabelList } from "@/components/LabelList/LabelList";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { ActivityFeed } from "@/components/ActivityFeed/ActivityFeed";
 import { TaskCheck } from "@/components/TaskCheck/TaskCheck";
 import { Avatar, ButtonLink, Card, ProgressBar } from "@/components/ui";
+import { toFeedItem } from "@/lib/activity";
 import { formatDueDate, isOverdue } from "@/lib/format";
 import {
+  getActivity,
   getComments,
   getMe,
   getMembers,
@@ -21,6 +24,8 @@ import { NewSubtaskButton } from "./NewSubtaskButton";
 import { StatusSelect } from "./StatusSelect";
 import styles from "./task.module.css";
 
+const HISTORY_PAGE = 10;
+
 /** Detail of a task or a subtask (both are the same entity in the API). */
 export default async function TaskPage({
   params,
@@ -28,13 +33,14 @@ export default async function TaskPage({
   const { projectId, taskId } = await params;
   // One round for everything that only needs the ids in the URL (the list of
   // subtasks of a subtask is just empty). Only a subtask needs a second one, for its parent.
-  const [project, task, me, subtasks, comments, members] = await Promise.all([
+  const [project, task, me, subtasks, comments, members, activity] = await Promise.all([
     getProject(projectId),
     getTask(projectId, taskId),
     getMe(),
     getSubtasks(projectId, taskId),
     getComments(projectId, taskId),
     getMembers(projectId),
+    getActivity(projectId, taskId, HISTORY_PAGE),
   ]);
   const isSubtask = task.parentId !== null;
   const parent = task.parentId ? await getTask(projectId, task.parentId) : null;
@@ -149,6 +155,17 @@ export default async function TaskPage({
           currentUserId={me.id}
           isOwner={project.role === "OWNER"}
         />
+
+        <Card>
+          <div className={styles.sectionLabel}>Historial</div>
+          <ActivityFeed
+            projectId={projectId}
+            taskId={taskId}
+            items={activity.items.map((event) => toFeedItem(event, projectId))}
+            nextCursor={activity.nextCursor}
+            limit={HISTORY_PAGE}
+          />
+        </Card>
 
         {canDelete && (
           <div className={styles.footer}>

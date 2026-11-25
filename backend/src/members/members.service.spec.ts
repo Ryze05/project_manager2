@@ -14,6 +14,7 @@ describe('MembersService', () => {
   const create = vi.fn();
   const del = vi.fn();
   const updateMany = vi.fn();
+  const createMany = vi.fn();
   const transaction = vi.fn();
   const findByEmail = vi.fn();
 
@@ -33,8 +34,18 @@ describe('MembersService', () => {
     role: ProjectRole.MEMBER,
   };
 
+  // The interactive transaction runs its callback with the same mocks.
+  const tx = {
+    projectMember: { create, delete: del },
+    task: { updateMany },
+    activity: { createMany },
+  };
+
   beforeEach(() => {
     vi.resetAllMocks();
+    transaction.mockImplementation(async (fn: (client: typeof tx) => unknown) =>
+      fn(tx),
+    );
   });
 
   describe('requireMember', () => {
@@ -163,8 +174,10 @@ describe('MembersService', () => {
   describe('remove', () => {
     it('unassigns their tasks and deletes the membership in one transaction', async () => {
       findUnique.mockResolvedValueOnce(owner).mockResolvedValueOnce(member);
-      updateMany.mockReturnValue('updateMany-op');
-      del.mockReturnValue('delete-op');
+      findUnique.mockReset();
+      findUnique
+        .mockResolvedValueOnce(owner)
+        .mockResolvedValueOnce({ ...member, user: { name: 'Pablo' } });
 
       await service.remove('p1', 'owner', 'member');
 
@@ -175,7 +188,17 @@ describe('MembersService', () => {
       expect(del).toHaveBeenCalledWith({
         where: { userId_projectId: { userId: 'member', projectId: 'p1' } },
       });
-      expect(transaction).toHaveBeenCalledWith(['updateMany-op', 'delete-op']);
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            type: 'MEMBER_REMOVED',
+            projectId: 'p1',
+            actorId: 'owner',
+            data: { name: 'Pablo' },
+          }),
+        ],
+      });
     });
 
     it('refuses to remove the owner', async () => {

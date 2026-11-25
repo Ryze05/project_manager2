@@ -16,13 +16,17 @@ describe('TasksService', () => {
   const findUnique = vi.fn();
   const update = vi.fn();
   const del = vi.fn();
+  const createMany = vi.fn();
   const transaction = vi.fn();
   const requireMember = vi.fn();
   const isMember = vi.fn();
 
   // The interactive transaction runs its callback with a client exposing the
   // same task mocks, so assertions on create/update work inside and outside it.
-  const tx = { task: { create, update } };
+  const tx = {
+    task: { create, update, delete: del },
+    activity: { createMany },
+  };
 
   const service = new TasksService(
     {

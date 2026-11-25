@@ -11,6 +11,8 @@ describe('CommentsService', () => {
   const commentFindFirst = vi.fn();
   const update = vi.fn();
   const del = vi.fn();
+  const createMany = vi.fn();
+  const transaction = vi.fn();
   const requireMember = vi.fn();
 
   const service = new CommentsService(
@@ -23,9 +25,13 @@ describe('CommentsService', () => {
         update,
         delete: del,
       },
+      $transaction: transaction,
     } as unknown as PrismaService,
     { requireMember } as unknown as MembersService,
   );
+
+  // The interactive transaction runs its callback with the same comment mocks.
+  const tx = { comment: { create }, activity: { createMany } };
 
   const createdAt = new Date('2026-01-01');
   const include = { author: { select: { id: true, name: true, email: true } } };
@@ -47,10 +53,18 @@ describe('CommentsService', () => {
     requireMember.mockResolvedValue({ role: ProjectRole.MEMBER });
   const asOwner = () =>
     requireMember.mockResolvedValue({ role: ProjectRole.OWNER });
-  const taskExists = () => taskFindFirst.mockResolvedValue({ id: 't1' });
+  const taskExists = () =>
+    taskFindFirst.mockResolvedValue({
+      id: 't1',
+      title: 'Tarea',
+      parentId: null,
+    });
 
   beforeEach(() => {
     vi.resetAllMocks();
+    transaction.mockImplementation(async (fn: (client: typeof tx) => unknown) =>
+      fn(tx),
+    );
   });
 
   describe('create', () => {
@@ -65,11 +79,23 @@ describe('CommentsService', () => {
 
       expect(taskFindFirst).toHaveBeenCalledWith({
         where: { id: 't1', projectId: 'p1' },
-        select: { id: true },
+        select: { id: true, title: true, parentId: true },
       });
       expect(create).toHaveBeenCalledWith({
         data: { content: 'Hola', taskId: 't1', authorId: 'u1' },
         include,
+      });
+      expect(createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            type: 'COMMENT_ADDED',
+            projectId: 'p1',
+            actorId: 'u1',
+            taskId: 't1',
+            taskTitle: 'Tarea',
+            isSubtask: false,
+          }),
+        ],
       });
       expect(result).toEqual({
         id: 'c1',

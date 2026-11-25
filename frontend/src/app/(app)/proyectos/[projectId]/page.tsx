@@ -51,6 +51,9 @@ export default async function ProjectPage({
           <ButtonLink href={`/proyectos/${projectId}/miembros`} variant="ghost">
             Miembros <span className={styles.count}>{project.memberCount}</span>
           </ButtonLink>
+          <ButtonLink href={`/proyectos/${projectId}/actividad`} variant="ghost">
+            Actividad
+          </ButtonLink>
           {isOwner && (
             <ButtonLink href={`/proyectos/${projectId}/editar`} variant="ghost">
               Editar

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { api, unwrap } from "./api";
 import type {
+  ActivityPage,
   Board,
   CommentView,
   CurrentUser,
@@ -55,3 +56,12 @@ export const getComments = cache((projectId: string, taskId: string) =>
 export const getMyTasks = cache((includeDone: boolean) =>
   api<MyTaskView[]>(`/me/tasks?includeDone=${includeDone}`).then(unwrap),
 );
+
+/** A page of the history, newest first. `taskId` narrows it to one task; `cursor` asks for the older page. */
+export const getActivity = cache(
+  (projectId: string, taskId: string = "", limit: number = 50, actorId: string = "") => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (taskId) params.set("taskId", taskId);
+  if (actorId) params.set("actorId", actorId);
+  return api<ActivityPage>(`/projects/${projectId}/activity?${params}`).then(unwrap);
+});

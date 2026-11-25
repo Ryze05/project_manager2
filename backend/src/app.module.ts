@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ActivityModule } from './activity/activity.module.js';
 import { CommentsModule } from './comments/comments.module.js';
 import { envValidationSchema } from './config/env.validation.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module.js';
     ProjectsModule,
     TasksModule,
     CommentsModule,
+    ActivityModule,
     LabelsModule,
     MyTasksModule,
     HealthModule,

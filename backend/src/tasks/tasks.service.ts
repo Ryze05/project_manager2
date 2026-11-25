@@ -6,11 +6,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ActivityType,
   Prisma,
   ProjectRole,
   TaskStatus,
   type TaskPriority,
 } from '../generated/prisma/client.js';
+import {
+  recordActivity,
+  taskChanges,
+  type ActivityEntry,
+} from '../activity/activity.js';
 import { MembersService } from '../members/members.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTaskDto } from './dto/create-task.dto.js';
@@ -155,6 +161,44 @@ function boardFilters(filters: BoardQueryDto): Prisma.TaskWhereInput[] {
   return conditions;
 }
 
+/** A task (or subtask) was created. */
+function createdEntry(
+  task: {
+    id: string;
+    title: string;
+    projectId: string;
+    parentId: string | null;
+  },
+  actorId: string,
+): ActivityEntry {
+  return {
+    type: ActivityType.TASK_CREATED,
+    projectId: task.projectId,
+    actorId,
+    task: {
+      id: task.id,
+      title: task.title,
+      isSubtask: task.parentId !== null,
+      parentId: task.parentId,
+    },
+  };
+}
+
+/** The parent went back to IN_PROGRESS because a subtask was added or reopened under it. */
+function reopenedEntry(
+  parent: { id: string; title: string },
+  actorId: string,
+  projectId: string,
+): ActivityEntry {
+  return {
+    type: ActivityType.STATUS_CHANGED,
+    projectId,
+    actorId,
+    task: { id: parent.id, title: parent.title, isSubtask: false },
+    data: { from: TaskStatus.DONE, to: TaskStatus.IN_PROGRESS },
+  };
+}
+
 /** undefined = leave as is, null = clear, string = set. */
 function toDate(value: string | null | undefined): Date | null | undefined {
   return value === undefined || value === null ? value : new Date(value);
@@ -176,14 +220,18 @@ export class TasksService {
     await this.assertAssignable(projectId, dto.assigneeId);
     await this.assertLabels(projectId, dto.labelIds);
 
-    const task = await this.prisma.task.create({
-      data: {
-        ...fieldsOf(dto),
-        ...(dto.labelIds?.length && { labels: connect(dto.labelIds) }),
-        projectId,
-        creatorId: userId,
-      },
-      include: taskInclude,
+    const task = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.task.create({
+        data: {
+          ...fieldsOf(dto),
+          ...(dto.labelIds?.length && { labels: connect(dto.labelIds) }),
+          projectId,
+          creatorId: userId,
+        },
+        include: taskInclude,
+      });
+      await recordActivity(tx, [createdEntry(created, userId)]);
+      return created;
     });
     return toView(task);
   }
@@ -216,8 +264,9 @@ export class TasksService {
           where: { id: parent.id },
           data: { status: TaskStatus.IN_PROGRESS },
         });
+        await recordActivity(tx, [reopenedEntry(parent, userId, projectId)]);
       }
-      return tx.task.create({
+      const created = await tx.task.create({
         data: {
           ...fieldsOf(dto),
           projectId: parent.projectId,
@@ -226,6 +275,8 @@ export class TasksService {
         },
         include: taskInclude,
       });
+      await recordActivity(tx, [createdEntry(created, userId)]);
+      return created;
     });
     return toView(subtask);
   }
@@ -318,11 +369,14 @@ export class TasksService {
     const task = await this.prisma.$transaction(async (tx) => {
       if (parentToReopen) {
         await tx.task.update({
-          where: { id: parentToReopen },
+          where: { id: parentToReopen.id },
           data: { status: TaskStatus.IN_PROGRESS },
         });
+        await recordActivity(tx, [
+          reopenedEntry(parentToReopen, userId, projectId),
+        ]);
       }
-      return tx.task.update({
+      const updated = await tx.task.update({
         where: { id: taskId },
         data: {
           ...fieldsOf(dto),
@@ -334,6 +388,8 @@ export class TasksService {
         },
         include: taskInclude,
       });
+      await recordActivity(tx, taskChanges(existing, updated, userId));
+      return updated;
     });
     return toView(task);
   }
@@ -355,7 +411,24 @@ export class TasksService {
         'Solo puedes borrar las tareas que has creado',
       );
     }
-    await this.prisma.task.delete({ where: { id: taskId } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.task.delete({ where: { id: taskId } });
+      await recordActivity(tx, [
+        {
+          type: ActivityType.TASK_DELETED,
+          projectId,
+          actorId: userId,
+          task: {
+            id: task.id,
+            title: task.title,
+            isSubtask: task.parentId !== null,
+            parentId: task.parentId,
+          },
+          // Subtasks and comments vanish with it; say how many subtasks.
+          data: { subtasks: task.subtasks.length },
+        },
+      ]);
+    });
   }
 
   /** Scoped by project, so a task id from another project is just a 404. */
@@ -377,7 +450,7 @@ export class TasksService {
   private async parentToReopen(
     task: TaskRow,
     newStatus: TaskStatus | undefined,
-  ): Promise<string | null> {
+  ): Promise<{ id: string; title: string } | null> {
     const reopening =
       task.parentId !== null &&
       task.status === TaskStatus.DONE &&
@@ -387,9 +460,11 @@ export class TasksService {
 
     const parent = await this.prisma.task.findUnique({
       where: { id: task.parentId as string },
-      select: { id: true, status: true },
+      select: { id: true, title: true, status: true },
     });
-    return parent?.status === TaskStatus.DONE ? parent.id : null;
+    return parent?.status === TaskStatus.DONE
+      ? { id: parent.id, title: parent.title }
+      : null;
   }
 
   /** Every label id must exist in this project (a label of another project is just as invalid). */

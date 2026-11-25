@@ -3,7 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ProjectRole } from '../generated/prisma/client.js';
+import {
+  ActivityType,
+  Prisma,
+  ProjectRole,
+} from '../generated/prisma/client.js';
+import { recordActivity } from '../activity/activity.js';
 import { MembersService } from '../members/members.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateCommentDto } from './dto/create-comment.dto.js';
@@ -56,11 +61,27 @@ export class CommentsService {
     dto: CreateCommentDto,
   ): Promise<CommentView> {
     await this.members.requireMember(projectId, userId);
-    await this.assertTaskInProject(projectId, taskId);
+    const task = await this.assertTaskInProject(projectId, taskId);
 
-    const comment = await this.prisma.comment.create({
-      data: { content: dto.content, taskId, authorId: userId },
-      include: commentInclude,
+    const comment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.comment.create({
+        data: { content: dto.content, taskId, authorId: userId },
+        include: commentInclude,
+      });
+      await recordActivity(tx, [
+        {
+          type: ActivityType.COMMENT_ADDED,
+          projectId,
+          actorId: userId,
+          task: {
+            id: task.id,
+            title: task.title,
+            isSubtask: task.parentId !== null,
+            parentId: task.parentId,
+          },
+        },
+      ]);
+      return created;
     });
     return toView(comment);
   }
@@ -129,14 +150,15 @@ export class CommentsService {
   private async assertTaskInProject(
     projectId: string,
     taskId: string,
-  ): Promise<void> {
+  ): Promise<{ id: string; title: string; parentId: string | null }> {
     const task = await this.prisma.task.findFirst({
       where: { id: taskId, projectId },
-      select: { id: true },
+      select: { id: true, title: true, parentId: true },
     });
     if (!task) {
       throw new NotFoundException('Tarea no encontrada');
     }
+    return task;
   }
 
   /** Scoped by task: a comment id from another task is just a 404. */

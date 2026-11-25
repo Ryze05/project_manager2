@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ProjectRole } from '../generated/prisma/client.js';
+import { ActivityType, ProjectRole } from '../generated/prisma/client.js';
+import { recordActivity } from '../activity/activity.js';
 import type { ProjectMember } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UsersService } from '../users/users.service.js';
@@ -99,8 +100,19 @@ export class MembersService {
       throw new ConflictException('El usuario ya es miembro del proyecto');
     }
 
-    const { role } = await this.prisma.projectMember.create({
-      data: { userId: user.id, projectId, role: ProjectRole.MEMBER },
+    const { role } = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.projectMember.create({
+        data: { userId: user.id, projectId, role: ProjectRole.MEMBER },
+      });
+      await recordActivity(tx, [
+        {
+          type: ActivityType.MEMBER_ADDED,
+          projectId,
+          actorId: requesterId,
+          data: { name: user.name },
+        },
+      ]);
+      return created;
     });
     return { id: user.id, name: user.name, email: user.email, role };
   }
@@ -114,6 +126,7 @@ export class MembersService {
 
     const target = await this.prisma.projectMember.findUnique({
       where: { userId_projectId: { userId: targetUserId, projectId } },
+      include: { user: { select: { name: true } } },
     });
     if (!target) {
       throw new NotFoundException('El usuario no es miembro del proyecto');
@@ -126,14 +139,22 @@ export class MembersService {
 
     // Task.assigneeId points at User, not ProjectMember, so the DB won't
     // unassign by itself: do it here, atomically with the removal.
-    await this.prisma.$transaction([
-      this.prisma.task.updateMany({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.task.updateMany({
         where: { projectId, assigneeId: targetUserId },
         data: { assigneeId: null },
-      }),
-      this.prisma.projectMember.delete({
+      });
+      await tx.projectMember.delete({
         where: { userId_projectId: { userId: targetUserId, projectId } },
-      }),
-    ]);
+      });
+      await recordActivity(tx, [
+        {
+          type: ActivityType.MEMBER_REMOVED,
+          projectId,
+          actorId: requesterId,
+          data: { name: target.user.name },
+        },
+      ]);
+    });
   }
 }
