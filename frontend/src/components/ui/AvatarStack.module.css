@@ -6,7 +6,8 @@
 /* The ring is the card colour, so overlapping initials stay apart. */
 .item {
   display: inline-flex;
-  margin-left: calc(-1 * var(--s2));
+  /* Overlap of 4 px: with the 2 px ring, more would cover the edge of the previous initial. */
+  margin-left: calc(-1 * var(--s1));
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--surface);
 }
