@@ -27,7 +27,7 @@
   --s5: 24px;
   --s6: 32px;
   --s7: 48px;
-  --page-pad: var(--s6);
+  --page-pad: var(--s4);
   --card-pad: var(--s5);
   --gap: var(--s4);
   --section-gap: var(--s6);
@@ -52,8 +52,8 @@
   --fw-medium: 500;
   --fw-bold: 600;
 
-  --sidebar-w: 240px;
-  --page-max: 960px;
+  --sidebar-w: 300px;
+  --page-max: 1200px;
 }
 
 @media (max-width: 900px) {

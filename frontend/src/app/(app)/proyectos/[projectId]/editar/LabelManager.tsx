@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { ConfirmDelete } from "@/components/ConfirmDelete/ConfirmDelete";
 import { Button, Input } from "@/components/ui";
 import type { ActionResult, LabelView } from "@/lib/types";
@@ -11,16 +11,22 @@ import {
 } from "../actions";
 import styles from "../../projects.module.css";
 
-/** One row: rename in place, or delete (which only takes the label off its tasks). */
+/**
+ * One row: name and task count, with "Renombrar" and "Eliminar" side by side.
+ * Renaming opens an input in place of the name. The parent keys the row by
+ * id + name, so a successful rename remounts it back in reading mode.
+ */
 function LabelRow({ projectId, label }: { projectId: string; label: LabelView }) {
+  const [editing, setEditing] = useState(false);
   const [state, action, pending] = useActionState(
     renameLabelAction.bind(null, projectId, label.id),
     {} as ActionResult,
   );
-  return (
-    <li>
-      <form action={action} className={styles.listBody}>
-        <div className={styles.inline}>
+
+  if (editing) {
+    return (
+      <li>
+        <form action={action} className={`${styles.inline} ${styles.listBody}`}>
           <div className={styles.grow}>
             <Input
               name="name"
@@ -28,22 +34,41 @@ function LabelRow({ projectId, label }: { projectId: string; label: LabelView })
               defaultValue={label.name}
               maxLength={30}
               error={state.error}
+              autoFocus
             />
           </div>
-          <Button type="submit" variant="ghost" disabled={pending}>
-            {pending ? "Guardando…" : "Renombrar"}
-          </Button>
-        </div>
+          <div className={styles.rowActions}>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Guardando…" : "Guardar"}
+            </Button>
+            <Button variant="ghost" onClick={() => setEditing(false)} disabled={pending}>
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <div className={styles.listBody}>
+        <span className={styles.listTitle}>{label.name}</span>
         <span className={styles.listMeta}>
           {label.taskCount === 1 ? "1 tarea" : `${label.taskCount} tareas`}
         </span>
-      </form>
-      <ConfirmDelete
-        action={deleteLabelAction.bind(null, projectId, label.id)}
-        label="Eliminar"
-        title={`¿Eliminar la etiqueta «${label.name}»?`}
-        description="Se quitará de sus tareas, que no se borran."
-      />
+      </div>
+      <div className={styles.rowActions}>
+        <Button variant="ghost" onClick={() => setEditing(true)}>
+          Renombrar
+        </Button>
+        <ConfirmDelete
+          action={deleteLabelAction.bind(null, projectId, label.id)}
+          label="Eliminar"
+          title={`¿Eliminar la etiqueta «${label.name}»?`}
+          description="Se quitará de sus tareas, que no se borran."
+        />
+      </div>
     </li>
   );
 }
